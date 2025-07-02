@@ -1,0 +1,42 @@
+name: Repo Dispatcher
+
+on:
+  workflow_dispatch:
+
+env:
+  REPO_SOURCE: openwrt/openwrt
+
+jobs:
+
+  get_list:
+    runs-on: ubuntu-latest
+    outputs:
+      device_list: ${{ steps.set_output.outputs.device_list }}
+      branch_list: ${{ steps.set_output.outputs.branch_list }}
+    steps:
+      - name: Get List
+        id: set_output
+        run: |
+          DEVICES=$(curl -s "https://api.github.com/repos/${{ github.repository }}/contents/config/device" | jq '[.[] | select(.name ) | .name | rtrimstr(".config.seed") ]')
+          echo "device_list=$(echo $DEVICES)" >> $GITHUB_OUTPUT 
+          # REPO_BRANCHES=$(curl -s "https://api.github.com/repos/$REPO_SOURCE/tags" | jq '[.[] | select(.name | test("rc") | not) | .name]')
+          REPO_BRANCHES=$(curl -s "https://api.github.com/repos/$REPO_SOURCE/tags" | jq '[("main"), (.[].name | select(test("rc") | not) | .)][0:2]')
+          echo "branch_list=$(echo $REPO_BRANCHES)" >> $GITHUB_OUTPUT
+
+  build:
+    needs: get_list
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        device: ${{ fromJson(needs.get_list.outputs.device_list) }}
+        branch: ${{ fromJson(needs.get_list.outputs.branch_list) }}
+    steps:
+      - name: Trigger Compile
+        run: |
+          version="openwrt-$([[ "${{ matrix.branch }}" == "main" ]] && echo "snapshot" || echo "${{ matrix.branch }}")"
+          curl \
+          -X POST https://api.github.com/repos/${{ github.repository }}/dispatches \
+          -H "Accept: application/vnd.github.everest-preview+json" \
+          -H "Authorization: token ${{ secrets.SEC_TOKEN }}" \
+          -d '{"event_type": "'"$version for ${{ matrix.device }}"'", "client_payload": {"branch": "${{ matrix.branch }}", "device": "${{ matrix.device }}" }}'

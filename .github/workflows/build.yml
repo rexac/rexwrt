@@ -1,0 +1,187 @@
+name: Build
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      device:
+        description: 'select device to build'
+        default: 'nanopi-r4s'
+        required: false
+      branch:
+        description: 'seleclt openwrt branch'
+        default: 'main'
+        required: false
+
+jobs:
+
+  build_packages:
+    name: Build ${{ github.event.client_payload.branch || github.event.inputs.branch }} for ${{ github.event.client_payload.device || github.event.inputs.device }}
+    runs-on: ubuntu-22.04
+    env:
+      DEVICE: ${{ github.event.client_payload.device || github.event.inputs.device }}
+      BRANCH: ${{ github.event.client_payload.branch || github.event.inputs.branch }}
+      REPO_URL: https://github.com/openwrt/openwrt
+      UPLOAD_RELEASE: true
+      TZ: Asia/Shanghai
+    if: github.repository_owner=='rexuc'
+
+    steps:
+    - name: Check Server Performance
+      run: |
+        echo "警告⚠"
+        echo "分配的服务器性能有限，若选择的插件过多，务必注意CPU性能！"
+        echo -e "已知CPU型号（降序）：7763，8370C，8272CL，8171M，E5-2673 \n"
+        echo "--------------------------CPU信息--------------------------"
+        echo "CPU物理数量：$(cat /proc/cpuinfo | grep "physical id" | sort | uniq | wc -l)"
+        echo -e "CPU核心信息：$(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c) \n"
+        echo "--------------------------内存信息--------------------------"
+        echo "已安装内存详细信息："
+        echo -e "$(sudo lshw -short -C memory | grep GiB) \n"
+        echo "--------------------------硬盘信息--------------------------"
+        echo "硬盘数量：$(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT
+
+    - name: Initialization Environment
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        docker rmi $(docker images -q)
+        sudo rm -rf /usr/share/dotnet /etc/apt/sources.list.d /usr/local/lib/android $AGENT_TOOLSDIRECTORY
+        sudo -E apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
+        sudo -E apt-get -y update
+        sudo -E apt-get -y install $(curl -fsSL is.gd/depends_ubuntu_2204)
+        sudo -E systemctl daemon-reload
+        sudo -E apt-get -y autoremove --purge
+        sudo -E apt-get -y clean
+        sudo timedatectl set-timezone "$TZ"
+
+    - name: Combine Disks
+      uses: easimon/maximize-build-space@master
+      with:
+        swap-size-mb: 1024
+        temp-reserve-mb: 100
+        root-reserve-mb: 1024
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Update Clang Alternatives
+      run: |
+        $GITHUB_WORKSPACE/script/update-clang-alternatives.sh
+
+    - name: Clone Source Code
+      run: |
+        df -hT $PWD
+        git clone $REPO_URL -b $BRANCH openwrt
+        echo "OPENWRTROOT=$PWD/openwrt" >> $GITHUB_ENV
+
+    - name: Update & Install Feeds
+      id: update
+      run: |
+        cd $OPENWRTROOT
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+
+    - name: Load Custom Configuration
+      run: |
+        cd $OPENWRTROOT
+        [ -e $GITHUB_WORKSPACE/files ] && mv $GITHUB_WORKSPACE/files files
+        cat $GITHUB_WORKSPACE/config/device/$DEVICE.config.seed > .config
+        cat $GITHUB_WORKSPACE/config/common.config.seed >> .config
+        ../script/extra.sh
+        make defconfig
+        ../script/external-toolchain.sh
+
+    - name: Download Package
+      id: package
+      run: |
+        cd $OPENWRTROOT
+        cat .config
+        make download -j8
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
+
+    - name: Compile Packages
+      id: compile
+      continue-on-error: true
+      run: |
+        cd $OPENWRTROOT
+        echo -e "$(nproc) thread compile"
+        make tools/compile -j$(nproc)
+        make toolchain/compile -j$(nproc)
+        make target/compile -j$(nproc)
+        make diffconfig
+        make package/compile -j$(nproc)
+        make package/index
+        echo "COMPILE_STATUS=success" >> $GITHUB_OUTPUT
+
+    - name: Generate Firmware
+      if: steps.compile.outputs.COMPILE_STATUS == 'success'
+      id: generate
+      continue-on-error: true
+      run: |
+        cd $OPENWRTROOT
+        mkdir -p files/etc/uci-defaults/
+        cp ../script/init-settings.sh files/etc/uci-defaults/99-init-settings
+        make package/install -j$(nproc)
+        make target/install -j$(nproc)
+        VERSION=$( [[ "${BRANCH}" == "main" ]] && echo "snapshot" || echo "${BRANCH}" )
+        mkdir -p $GITHUB_WORKSPACE/release
+        images=($(ls -1 ./bin/targets/*/*/*img.gz))
+        #images=($(ls -1 ./bin/targets/*/*/*img.gz | grep -v "rootfs"))
+        for image in "${images[@]}"; do
+          imagename=$(echo $(basename $image) | sed "s/openwrt/&-$VERSION/g; s/$TARGET_NAME\|-combined\|-generic\|-sysupgrade//g")
+          mv $image $GITHUB_WORKSPACE/release/$imagename
+          sha256value=$(sha256sum $GITHUB_WORKSPACE/release/$imagename | awk '{ print $1 }')
+          echo "$imagename: $sha256value" >> $GITHUB_WORKSPACE/release/$VERSION-$DEVICE-sha256sum.txt
+        done
+        echo "FIRMWARE=$GITHUB_WORKSPACE/release" >> $GITHUB_ENV
+
+    - name: Debug Error
+      if: steps.compile.outcome == 'failure' || steps.generate.outcome == 'failure'
+      run: |
+        cat $OPENWRTROOT/.config
+        echo '================================================================'
+        cd $OPENWRTROOT && make -j1 V=s
+        
+    - name: Generate release tag
+      id: tag
+      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+      run: |
+        echo "release_tag=$(date +"%Y-%m-%d")" >> $GITHUB_OUTPUT
+        echo "release_date=$(date +"%Y-%m-%d")" >> $GITHUB_OUTPUT
+        touch release.txt
+        echo "Default IP: 10.0.0.1" >> release.txt
+        echo "status=success" >> $GITHUB_OUTPUT
+
+    - name: Upload firmware to release
+      uses: softprops/action-gh-release@v2
+      if: steps.tag.outputs.status == 'success' && !cancelled()
+      env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+          name: ${{ steps.tag.outputs.release_date }} Automatic Release
+          tag_name: ${{ steps.tag.outputs.release_tag }}
+          body_path: release.txt
+          files: ${{ env.FIRMWARE }}/*
+
+    - name: Delete workflow runs
+      uses: Mattraks/delete-workflow-runs@v2
+      with:
+          retain_days: 1
+          keep_minimum_runs: 1
+
+    - name: Remove old Releases
+      uses: dev-drprasad/delete-older-releases@v0.3.3
+      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+      with:
+          keep_latest: 20
+          delete_tags: true
+      env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Delete Artifacts
+      uses: geekyeggo/delete-artifact@v4
+      with:
+         name: |
+            bin-archive
