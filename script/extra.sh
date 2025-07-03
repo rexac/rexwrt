@@ -71,6 +71,13 @@ git clone https://github.com/sbwml/v2ray-geodata
 # Add luci-app-tailscale
 git clone https://github.com/asvow/luci-app-tailscale
 
+# Add luci-app-zerotier
+if [ ! -d "$OPENWRTROOT/feeds/luci/applications/luci-app-zerotier" ]; then
+  rm -rf $OPENWRTROOT/feeds/packages/net/zerotier
+  clone_and_extract https://github.com/immortalwrt/packages net/zerotier
+  clone_and_extract https://github.com/immortalwrt/luci applications/luci-app-zerotier
+fi
+
 # Add luci-theme-argon
 clone_and_extract https://github.com/immortalwrt/luci themes/luci-theme-argon
 clone_and_extract https://github.com/immortalwrt/luci applications/luci-app-argon-config

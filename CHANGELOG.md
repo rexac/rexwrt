@@ -3,6 +3,7 @@
 
 ## 20250703
 * fix kernel patch bug
+* luci-app-zerotier✔
 
 ---
 
