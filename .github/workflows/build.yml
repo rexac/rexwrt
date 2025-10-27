@@ -24,7 +24,7 @@ jobs:
       REPO_URL: https://github.com/openwrt/openwrt
       UPLOAD_RELEASE: true
       TZ: Asia/Shanghai
-    if: github.repository_owner=='rexuc'
+    if: github.repository_owner=='rexac'
 
     steps:
     - name: Check Server Performance
