@@ -1,6 +1,11 @@
 # Changelog
 ###### (auto syncing with the upstream repository)
 
+## 20251028
+* supports 4G portable Wi-Fi
+
+---
+
 ## 20250703
 * fix kernel patch bug
 * luci-app-zerotier✔
