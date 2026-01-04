@@ -1,6 +1,12 @@
 # Changelog
 ###### (auto syncing with the upstream repository)
 
+## 20260104
+* Support for USB portable Wi-Fi
+* Support for iOS USB Personal Hotspot
+
+---
+
 ## 20251028
 * supports 4G portable Wi-Fi
 
