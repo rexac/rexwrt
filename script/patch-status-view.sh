@@ -46,7 +46,7 @@ execute_sed $file_a "\t}\n};\n\n" "$insert_path/ucode-luci" "above"
 
 execute_sed $file_b "method: 'info'\n});" "$insert_path/system-a.js" "below"
 execute_sed $file_b "L.resolveDefault(callSystemInfo(), {})," "$insert_path/system-b.js" "below"
-execute_sed $file_b "\n\t\t    luciversion = data\[2\];" "$insert_path/system-c.js" "below" "true"
+execute_sed $file_b "\n\t\t    luciversion = data\[2\],\n\t\t    unixtime    = data\[3\];" "$insert_path/system-c.js" "below" "true"
 execute_sed $file_b "\n\t\t\t_('Model'),            boardinfo.model,\n\t\t\t_('Architecture'),     boardinfo.system," "$insert_path/system-d.js" "below" "true"
 execute_sed $file_b "\t\t\t) : null" "$insert_path/system-e.js" "append"
 execute_sed $file_b "\t\t];" "$insert_path/system-f.js" "below"
