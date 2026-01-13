@@ -26,7 +26,7 @@ new file mode 100644
 index 000000000000..57283cc16ad9
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-h5-nanopi-neo2-black.dts
-@@ -0,0 +1,210 @@
+@@ -0,0 +1,228 @@
 +/*
 + * Copyright (C) 2017 Antony Antony <antony@phenome.org>
 + * Copyright (C) 2016 ARM Ltd.
@@ -124,6 +124,15 @@ index 000000000000..57283cc16ad9
 +		regulator-max-microvolt = <3300000>;
 +	};
 +
++	reg_usb1_vbus: usb1-vbus {
++		compatible = "regulator-fixed";
++		regulator-name = "usb1-vbus";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++		regulator-always-on;
++		regulator-boot-on;
++	};
++
 +	wifi_pwrseq: wifi_pwrseq {
 +		compatible = "mmc-pwrseq-simple";
 +		pinctrl-names = "default";
@@ -145,6 +154,10 @@ index 000000000000..57283cc16ad9
 +};
 +
 +&ehci0 {
++	status = "okay";
++};
++
++&ehci1 {
 +	status = "okay";
 +};
 +
@@ -203,6 +216,10 @@ index 000000000000..57283cc16ad9
 +	status = "okay";
 +};
 +
++&ohci1 {
++	status = "okay";
++};
++
 +&ohci3 {
 +	status = "okay";
 +};
@@ -236,5 +253,6 @@ index 000000000000..57283cc16ad9
 +&usbphy {
 +	/* USB Type-A ports' VBUS is always on */
 +	status = "okay";
++	usb1_vbus-supply = <&reg_usb1_vbus>;
 +};
 
