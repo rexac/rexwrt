@@ -1,0 +1,8 @@
+define U-Boot/nanopi_neo2_black
+  BUILD_SUBTARGET:=cortexa53
+  NAME:=NanoPi NEO2 Black (H5)
+  BUILD_DEVICES:=friendlyarm_nanopi-neo2-black
+  DEPENDS:=+PACKAGE_u-boot-nanopi_neo2_black:trusted-firmware-a-sunxi-a64
+  UENV:=a64
+  ATF:=a64
+endef

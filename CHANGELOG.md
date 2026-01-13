@@ -1,6 +1,11 @@
 # Changelog
 ###### (auto syncing with the upstream repository)
 
+## 20260113
+* Add support for NanoPi NEO2 Black
+
+---
+
 ## 20260104
 * Support for USB portable Wi-Fi
 * Support for iOS USB Personal Hotspot
