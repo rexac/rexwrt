@@ -26,7 +26,7 @@ new file mode 100644
 index 000000000000..111111111111
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-h5-nanopi-neo2-black.dts
-@@ -0,0 +1,228 @@
+@@ -0,0 +1,235 @@
 +/*
 + * Copyright (C) 2017 Antony Antony <antony@phenome.org>
 + * Copyright (C) 2016 ARM Ltd.
@@ -210,6 +210,13 @@ index 000000000000..111111111111
 +	non-removable;
 +	cap-mmc-hw-reset;
 +	status = "okay";
++};
++
++&i2c0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&i2c0_pins>;
++	status = "okay";
++	clock-frequency = <400000>;
 +};
 +
 +&ohci0 {
