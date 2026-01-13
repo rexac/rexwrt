@@ -52,4 +52,6 @@ if [ "$DEVICE" == "nanopi-neo2-black" ]; then
   sed -i '/^\tnanopi_neo2/ i \\tnanopi_neo2_black \\' $OPENWRTROOT/package/boot/uboot-sunxi/Makefile
   execute_sed "$OPENWRTROOT/package/boot/uboot-sunxi/Makefile" "define U-Boot/nanopi_neo2" "$patch_board/uboot-sunxi_Makefile" "above"
   execute_sed "$OPENWRTROOT/target/linux/sunxi/image/cortexa53.mk" "define Device/friendlyarm_nanopi-neo2" "$patch_board/sunxi_image_cortexa53.mk" "above"
+  execute_sed "$OPENWRTROOT/target/linux/sunxi/cortexa53/config-*" "CONFIG_64BIT=y" "$patch_board/sunxi_cortexa53_config" "below"
+
 fi
