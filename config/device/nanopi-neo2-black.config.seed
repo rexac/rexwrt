@@ -11,3 +11,8 @@ CONFIG_TARGET_ROOTFS_SQUASHFS=y
 
 # Utilities
 CONFIG_PACKAGE_autocore-arm=y
+
+# NanoHatOLED
+CONFIG_PACKAGE_i2c-tools=y
+CONFIG_PACKAGE_kmod-i2c-core=y
+CONFIG_PACKAGE_kmod-i2c-gpio=y
