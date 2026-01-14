@@ -79,6 +79,7 @@ jobs:
       id: update
       run: |
         cd $OPENWRTROOT
+        sed -i 's#https://git\.openwrt\.org/\(feed\|project\)/\([^.]\+\)\.git#https://github.com/openwrt/\2.git#g' feeds.conf.default
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
