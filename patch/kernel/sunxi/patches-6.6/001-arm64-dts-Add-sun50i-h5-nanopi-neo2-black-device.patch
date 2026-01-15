@@ -26,7 +26,7 @@ new file mode 100644
 index 000000000000..57283cc16ad9
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-h5-nanopi-neo2-black.dts
-@@ -0,0 +1,225 @@
+@@ -0,0 +1,226 @@
 +/*
 + * Copyright (C) 2017 Antony Antony <antony@phenome.org>
 + * Copyright (C) 2016 ARM Ltd.
@@ -72,6 +72,7 @@ index 000000000000..57283cc16ad9
 +
 +/dts-v1/;
 +#include "sun50i-h5.dtsi"
++#include "sun50i-h5-cpu-opp.dtsi"
 +
 +#include <dt-bindings/gpio/gpio.h>
 +#include <dt-bindings/input/input.h>
