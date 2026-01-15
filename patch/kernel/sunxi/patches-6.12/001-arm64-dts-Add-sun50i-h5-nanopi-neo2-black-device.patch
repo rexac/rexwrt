@@ -5,8 +5,9 @@ Subject: arm64:dts: Add sun50i-h5-nanopi-neo2-black device
 
 ---
  arch/arm64/boot/dts/allwinner/Makefile        |   1 +
- .../allwinner/sun50i-h5-nanopi-neo2-black.dts  | 210 ++++++++++++++++++
- 2 files changed, 211 insertions(+)
+ .../boot/dts/allwinner/sun50i-h5-cpu-opp.dtsi |  24 ++
+ .../allwinner/sun50i-h5-nanopi-neo2-black.dts | 226 ++++++++++++++++++
+ 3 files changed, 251 insertions(+)
  create mode 100644 arch/arm64/boot/dts/allwinner/sun50i-h5-nanopi-neo2-black.dts
 
 diff --git a/arch/arm64/boot/dts/allwinner/Makefile b/arch/arm64/boot/dts/allwinner/Makefile
@@ -21,6 +22,41 @@ index 00bed412ee31..d87059e8bc9c 100644
  dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h5-nanopi-neo-plus2.dtb
  dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h5-nanopi-r1s-h5.dtb
  dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h5-orangepi-pc2.dtb
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h5-cpu-opp.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-h5-cpu-opp.dtsi
+index 1afad8b437d7..769399e8290a 100644
+--- a/arch/arm64/boot/dts/allwinner/sun50i-h5-cpu-opp.dtsi
++++ b/arch/arm64/boot/dts/allwinner/sun50i-h5-cpu-opp.dtsi
+@@ -59,6 +59,30 @@ opp-1152000000 {
+ 			opp-microvolt = <1300000 1300000 1310000>;
+ 			clock-latency-ns = <244144>; /* 8 32k periods */
+ 		};
++
++		opp-1200000000 {
++			opp-hz = /bits/ 64 <1200000000>;
++			opp-microvolt = <1300000 1300000 1300000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++
++		opp-1224000000 {
++			opp-hz = /bits/ 64 <1224000000>;
++			opp-microvolt = <1300000 1300000 1300000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++
++		opp-1248000000 {
++			opp-hz = /bits/ 64 <1248000000>;
++			opp-microvolt = <1300000 1300000 1300000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++
++		opp-1296000000 {
++			opp-hz = /bits/ 64 <1296000000>;
++			opp-microvolt = <1300000 1300000 1300000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
+ 	};
+ };
+ 
 diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h5-nanopi-neo2-black.dts b/arch/arm64/boot/dts/allwinner/sun50i-h5-nanopi-neo2-black.dts
 new file mode 100644
 index 000000000000..111111111111
