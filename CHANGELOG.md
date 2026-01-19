@@ -1,6 +1,17 @@
 # Changelog
 ###### (auto syncing with the upstream repository)
 
+## 20260116
+* nanopi-neo2-black: overclock to 1.3GHz
+
+---
+
+## 20260115
+* nanopi-neo2-black: add cpu opp refs
+* nanopi-neo2-black: add cpu freq
+
+---
+
 ## 20260113
 * Add support for NanoPi NEO2 Black
 

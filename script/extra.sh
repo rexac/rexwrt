@@ -36,7 +36,7 @@ git clone https://github.com/sbwml/autocore-arm
 # Add coremark
 clone_and_extract https://github.com/coolsnowwolf/packages utils/coremark
 
-# Add luci-app-alist
+# Add luci-app-openlist
 if [ ! -d "$OPENWRTROOT/feeds/luci/applications/luci-app-openlist" ]; then
   clone_and_extract https://github.com/openwrt/packages net/openlist
   clone_and_extract https://github.com/openwrt/luci applications/luci-app-openlist
