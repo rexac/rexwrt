@@ -88,6 +88,12 @@ if [ ! -d "$OPENWRTROOT/feeds/luci/applications/luci-app-nikki" ]; then
   clone_and_extract https://github.com/nikkinikki-org/OpenWrt-nikki luci-app-nikki
 fi
 
+# Add NanoHatOLED
+if [ "$DEVICE" == "nanopi-neo2-black" ]; then
+  mkdir NanoHatOLED
+  wget -O NanoHatOLED/Makefile https://github.com/rexac/NanoHatOLED/raw/main/Makefile
+fi
+
 # Return to "openwrt" directory.
 cd $OPENWRTROOT
 

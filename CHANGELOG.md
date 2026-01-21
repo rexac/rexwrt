@@ -1,6 +1,11 @@
 # Changelog
 ###### (auto syncing with the upstream repository)
 
+## 20260121
+* nanopi-neo2-black: add NanoHatOLED
+
+---
+
 ## 20260116
 * nanopi-neo2-black: overclock to 1.3GHz
 
