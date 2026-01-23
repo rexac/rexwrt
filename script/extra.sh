@@ -30,17 +30,15 @@ popd
 cd $OPENWRTROOT/package
 
 
+# Add custom setup script
+cp $GITHUB_WORKSPACE/script/init-settings.sh base-files/files/etc/uci-defaults/99-init-settings
+chmod 755 base-files/files/etc/uci-defaults/99-init-settings
+
 # Add autocore-arm
 git clone https://github.com/sbwml/autocore-arm
 
 # Add coremark
 clone_and_extract https://github.com/coolsnowwolf/packages utils/coremark
-
-# Add luci-app-openlist
-if [ ! -d "$OPENWRTROOT/feeds/luci/applications/luci-app-openlist" ]; then
-  clone_and_extract https://github.com/openwrt/packages net/openlist
-  clone_and_extract https://github.com/openwrt/luci applications/luci-app-openlist
-fi
 
 # Add luci-app-cpufreq
 clone_and_extract https://github.com/immortalwrt/luci applications/luci-app-cpufreq
@@ -67,6 +65,12 @@ find ../ | grep Makefile | grep v2ray-geodata | xargs rm -f
 find ../ | grep Makefile | grep mosdns | xargs rm -f
 git clone https://github.com/sbwml/luci-app-mosdns -b v5 mosdns
 git clone https://github.com/sbwml/v2ray-geodata
+
+# Add luci-app-openlist
+if [ ! -d "$OPENWRTROOT/feeds/luci/applications/luci-app-openlist" ]; then
+  clone_and_extract https://github.com/openwrt/packages net/openlist
+  clone_and_extract https://github.com/openwrt/luci applications/luci-app-openlist
+fi
 
 # Add luci-app-tailscale
 git clone https://github.com/asvow/luci-app-tailscale
