@@ -1,6 +1,11 @@
 # Changelog
 ###### (auto syncing with the upstream repository)
 
+## 20260124
+* cpufreq: add sun50i-h5 with schedutil & dynamic freq
+
+---
+
 ## 20260121
 * nanopi-neo2-black: add NanoHatOLED
 

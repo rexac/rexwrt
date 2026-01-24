@@ -43,6 +43,7 @@ clone_and_extract https://github.com/coolsnowwolf/packages utils/coremark
 # Add luci-app-cpufreq
 clone_and_extract https://github.com/immortalwrt/luci applications/luci-app-cpufreq
 clone_and_extract https://github.com/immortalwrt/immortalwrt package/emortal/cpufreq
+sed -i '/allwinner,sun50i-h6")/i\\t\t"allwinner,sun50i-h5")\n\t\t\tuci_write_config 0 schedutil "$CPU_MIN_FREQ" "$CPU_MAX_FREQ"\n\t\t\t;;' cpufreq/files/cpufreq.uci
 
 # Add luci-app-diskman
 mkdir parted
