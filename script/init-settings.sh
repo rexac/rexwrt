@@ -53,8 +53,11 @@ echo "log-facility=/dev/null" >> "/etc/dnsmasq.conf"
 # Disable opkg signature check
 # sed -i 's/option check_signature/# option check_signature/g' /etc/opkg.conf
 
-# Switch opkg to a Chinese mirror
-sed -i 's/downloads.openwrt.org/mirrors.tuna.tsinghua.edu.cn\/openwrt/g' /etc/opkg/distfeeds.conf
+# Switch distfeeds to a Chinese mirror
+if ! grep -qi "snapshot" /etc/openwrt_release; then
+  sed -i 's/downloads.openwrt.org/mirrors.tuna.tsinghua.edu.cn\/openwrt/g' /etc/opkg/distfeeds.conf || true
+  sed -i 's/downloads.openwrt.org/mirrors.tuna.tsinghua.edu.cn\/openwrt/g' /etc/apk/repositories.d/distfeeds.list || true
+fi
 
 # Try to execute init.sh (if exists)
 [ -f "/boot/init.sh" ] && /bin/sh /boot/init.sh

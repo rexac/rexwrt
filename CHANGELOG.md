@@ -1,6 +1,11 @@
 # Changelog
 ###### (auto syncing with the upstream repository)
 
+## 20260127
+* nanopi-r4s: drop
+
+---
+
 ## 20260124
 * cpufreq: add sun50i-h5 with schedutil & dynamic freq
 

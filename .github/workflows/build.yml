@@ -6,7 +6,7 @@ on:
     inputs:
       device:
         description: 'select device to build'
-        default: 'nanopi-r4s'
+        default: 'nanopi-neo2-black'
         required: false
       branch:
         description: 'seleclt openwrt branch'

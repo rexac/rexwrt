@@ -9,6 +9,6 @@
 #=================================================
 patch_path="$GITHUB_WORKSPACE/patch/kernel"
 
-if [ "$DEVICE" == "nanopi-r4s" ]; then
-  cp -r $patch_path/* $OPENWRTROOT/target/linux
-fi
+#if [ "$DEVICE" == "nanopi-r4s" ]; then
+#  cp -r $patch_path/* $OPENWRTROOT/target/linux
+#fi
