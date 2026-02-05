@@ -5,6 +5,7 @@
 Add some network card drivers. Known support list:
 
 * rtl8188cu and rtl8192cu wireless network cards
+* add wireless support
 
 ---
 
