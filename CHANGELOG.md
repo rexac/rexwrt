@@ -1,6 +1,13 @@
 # Changelog
 ###### (auto syncing with the upstream repository)
 
+## 20260205
+Add some network card drivers. Known support list:
+
+* rtl8188cu and rtl8192cu wireless network cards
+
+---
+
 ## 20260127
 * nanopi-r4s: drop
 
