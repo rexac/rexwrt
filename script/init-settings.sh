@@ -24,8 +24,10 @@ rm -rf /tmp/luci-indexcache
 
 # Set default network preferences
 uci batch <<EOF
-set network.lan.ipaddr='10.0.0.1'
+delete network.lan.ipaddr
+delete network.lan.netmask
 delete network.globals.ula_prefix
+set network.lan.ipaddr='10.0.0.1/24'
 commit network
 EOF
 /etc/init.d/network reload

@@ -65,9 +65,9 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Update Clang Alternatives
-      run: |
-        $GITHUB_WORKSPACE/script/update-clang-alternatives.sh
+    #- name: Update Clang Alternatives
+    #  run: |
+    #    $GITHUB_WORKSPACE/script/update-clang-alternatives.sh
 
     - name: Clone Source Code
       run: |

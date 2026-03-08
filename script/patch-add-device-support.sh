@@ -52,6 +52,17 @@ if [ "$DEVICE" == "nanopi-neo2-black" ]; then
   sed -i '/^\tnanopi_neo2/ i \\tnanopi_neo2_black \\' $OPENWRTROOT/package/boot/uboot-sunxi/Makefile
   execute_sed "$OPENWRTROOT/package/boot/uboot-sunxi/Makefile" "define U-Boot/nanopi_neo2" "$patch_board/uboot-sunxi_Makefile" "above"
   execute_sed "$OPENWRTROOT/target/linux/sunxi/image/cortexa53.mk" "define Device/friendlyarm_nanopi-neo2" "$patch_board/sunxi_image_cortexa53.mk" "above"
-  execute_sed "$OPENWRTROOT/target/linux/sunxi/cortexa53/config-*" "CONFIG_64BIT=y" "$patch_board/sunxi_cortexa53_config" "below"
+  cat "$patch_board/sunxi_cortexa53_config" >> "$OPENWRTROOT"/target/linux/sunxi/cortexa53/config-*
+
+  # patch sunxi/config-*
+  sed -i 's/^CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y/# CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE is not set/' \
+    "$OPENWRTROOT"/target/linux/sunxi/config-*
+  sed -i '/^# CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL is not set/d' \
+    "$OPENWRTROOT"/target/linux/sunxi/config-*
+  echo "CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL=y" >> "$OPENWRTROOT"/target/linux/sunxi/config-*
+  sed -i 's/^# CONFIG_PINCTRL_SUN8I_H3 is not set/CONFIG_PINCTRL_SUN8I_H3=y/' \
+    "$OPENWRTROOT"/target/linux/sunxi/config-*
+  sed -i 's/^# CONFIG_PINCTRL_SUN8I_H3_R is not set/CONFIG_PINCTRL_SUN8I_H3_R=y/' \
+    "$OPENWRTROOT"/target/linux/sunxi/config-*
 
 fi
