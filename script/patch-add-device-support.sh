@@ -36,18 +36,13 @@ execute_sed() {
   sed -i 's#€#\t#g' $file
 }
 
-if [[ "$BRANCH" == *24.10* ]]; then
-  uboot_ver=2024.01
-else
-  uboot_ver=2025.01
-fi
-patch_uboot="$GITHUB_WORKSPACE/patch/u-boot/$uboot_ver"
-patch_kernel="$GITHUB_WORKSPACE/patch/kernel"
+$GITHUB_WORKSPACE/script/fetch_armbian_patches.sh --openwrt-root=$OPENWRTROOT
+
 patch_board="$GITHUB_WORKSPACE/patch/board"
 
 if [ "$DEVICE" == "nanopi-neo2-black" ]; then
-  cp -r $patch_uboot/* $OPENWRTROOT/package/boot
-  cp -r $patch_kernel/* $OPENWRTROOT/target/linux
+  cp -rf $GITHUB_WORKSPACE/patch/u-boot/* $OPENWRTROOT/package/boot/
+  cp -rf $GITHUB_WORKSPACE/patch/kernel/* $OPENWRTROOT/target/linux/
 
   sed -i '/^\tnanopi_neo2/ i \\tnanopi_neo2_black \\' $OPENWRTROOT/package/boot/uboot-sunxi/Makefile
   execute_sed "$OPENWRTROOT/package/boot/uboot-sunxi/Makefile" "define U-Boot/nanopi_neo2" "$patch_board/uboot-sunxi_Makefile" "above"
