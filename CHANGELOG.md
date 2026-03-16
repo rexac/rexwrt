@@ -1,6 +1,11 @@
 # Changelog
 ###### (auto syncing with the upstream repository)
 
+## 20260316
+* luci-app-podman✔
+
+—
+
 ## 20260127
 * nanopi-r4s: drop
 

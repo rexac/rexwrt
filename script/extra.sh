@@ -73,6 +73,9 @@ if [ ! -d "$OPENWRTROOT/feeds/luci/applications/luci-app-openlist" ]; then
   clone_and_extract https://github.com/openwrt/luci applications/luci-app-openlist
 fi
 
+# Add luci-app-podman
+git clone https://github.com/Zerogiven-OpenWRT-Packages/luci-app-podman
+
 # Add luci-app-tailscale
 git clone https://github.com/asvow/luci-app-tailscale
 
