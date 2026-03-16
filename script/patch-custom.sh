@@ -40,3 +40,6 @@ sed -i 's/llvm.download-ci-llvm=true/llvm.download-ci-llvm=false/g' $OPENWRTROOT
 if ! grep -q "llvm.download-ci-llvm=false" $OPENWRTROOT/feeds/packages/lang/rust/Makefile; then
   sed -i 's/$(TARGET_CONFIGURE_ARGS)/--set=llvm.download-ci-llvm=false \\\n\t$(TARGET_CONFIGURE_ARGS)/g' $OPENWRTROOT/feeds/packages/lang/rust/Makefile
 fi
+
+# gpgme: disable fortify-source to prevent musl and gcc-14 fortify header conflicts
+sed -i '/TARGET_CFLAGS += -D_LARGEFILE64_SOURCE/a\  TARGET_CFLAGS += -U_FORTIFY_SOURCE' $OPENWRTROOT/feeds/packages/libs/gpgme/Makefile
