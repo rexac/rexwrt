@@ -34,3 +34,9 @@ rm -rf $OPENWRTROOT/feeds/packages/net/zerotier/files/etc/init.d $OPENWRTROOT/fe
 # golang: bomp version to latest. 
 rm -rf $OPENWRTROOT/feeds/packages/lang/golang
 git clone https://github.com/sbwml/packages_lang_golang $OPENWRTROOT/feeds/packages/lang/golang
+
+# rust: disable download-ci-llvm to prevent build error
+sed -i 's/llvm.download-ci-llvm=true/llvm.download-ci-llvm=false/g' $OPENWRTROOT/feeds/packages/lang/rust/Makefile
+if ! grep -q "llvm.download-ci-llvm=false" $OPENWRTROOT/feeds/packages/lang/rust/Makefile; then
+  sed -i 's/$(TARGET_CONFIGURE_ARGS)/--set=llvm.download-ci-llvm=false \\\n\t$(TARGET_CONFIGURE_ARGS)/g' $OPENWRTROOT/feeds/packages/lang/rust/Makefile
+fi

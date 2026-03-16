@@ -14,7 +14,6 @@ on:
         required: false
 
 jobs:
-
   build_packages:
     name: Build ${{ github.event.client_payload.branch || github.event.inputs.branch }} for ${{ github.event.client_payload.device || github.event.inputs.device }}
     runs-on: ubuntu-22.04
@@ -157,30 +156,30 @@ jobs:
       uses: softprops/action-gh-release@v2
       if: steps.tag.outputs.status == 'success' && !cancelled()
       env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-          name: ${{ steps.tag.outputs.release_date }} Automatic Release
-          tag_name: ${{ steps.tag.outputs.release_tag }}
-          body_path: release.txt
-          files: ${{ env.FIRMWARE }}/*
+        name: ${{ steps.tag.outputs.release_date }} Automatic Release
+        tag_name: ${{ steps.tag.outputs.release_tag }}
+        body_path: release.txt
+        files: ${{ env.FIRMWARE }}/*
 
     - name: Delete workflow runs
       uses: Mattraks/delete-workflow-runs@v2
       with:
-          retain_days: 1
-          keep_minimum_runs: 1
+        retain_days: 1
+        keep_minimum_runs: 1
 
     - name: Remove old Releases
       uses: dev-drprasad/delete-older-releases@v0.3.3
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       with:
-          keep_latest: 20
-          delete_tags: true
+        keep_latest: 20
+        delete_tags: true
       env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Delete Artifacts
       uses: geekyeggo/delete-artifact@v4
       with:
-         name: |
-            bin-archive
+        name: |
+          bin-archive
