@@ -42,7 +42,7 @@ if ! grep -q "llvm.download-ci-llvm=false" $OPENWRTROOT/feeds/packages/lang/rust
 fi
 
 # gpgme: disable fortify-source to prevent musl and gcc-14 fortify header conflicts
-sed -i '/TARGET_CFLAGS += -D_LARGEFILE64_SOURCE/a\  TARGET_CFLAGS += -U_FORTIFY_SOURCE' $OPENWRTROOT/feeds/packages/libs/gpgme/Makefile
+sed -i 's/TARGET_CFLAGS += -D_LARGEFILE64_SOURCE/TARGET_CFLAGS += -D_LARGEFILE64_SOURCE -U_FORTIFY_SOURCE/g' $OPENWRTROOT/feeds/packages/libs/gpgme/Makefile
 
 # coremark: fix parallel build mkdir race condition
 sed -i 's/mkdir \$(PKG_BUILD_DIR)\/\$(ARCH)/mkdir -p \$(PKG_BUILD_DIR)\/\$(ARCH)/g' $OPENWRTROOT/package/coremark/Makefile
