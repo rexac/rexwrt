@@ -43,3 +43,7 @@ fi
 
 # coremark: fix parallel build mkdir race condition
 sed -i 's/mkdir \$(PKG_BUILD_DIR)\/\$(ARCH)/mkdir -p \$(PKG_BUILD_DIR)\/\$(ARCH)/g' $OPENWRTROOT/package/coremark/Makefile
+
+# Fix gpgme cross-compilation with musl toolchain
+sed -i '/^ifneq/a\  MAKE_FLAGS += AM_CFLAGS="$(TARGET_CFLAGS)"' \
+  $OPENWRTROOT/feeds/packages/libs/gpgme/Makefile
