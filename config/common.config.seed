@@ -1,3 +1,7 @@
+# Default
+CONFIG_DEVEL=y
+CONFIG_AUTOREMOVE=y
+
 # Language
 CONFIG_LUCI_LANG_zh_Hans=y
 CONFIG_PACKAGE_luci-i18n-base-zh-cn=y

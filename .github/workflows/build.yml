@@ -62,7 +62,7 @@ jobs:
         root-reserve-mb: 1024
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     #- name: Update Clang Alternatives
     #  run: |
@@ -90,6 +90,7 @@ jobs:
         cat $GITHUB_WORKSPACE/config/common.config.seed >> .config
         ../script/extra.sh
         make defconfig
+        ../script/external-tools.sh
         ../script/external-toolchain.sh
 
     - name: Download Package
@@ -107,7 +108,6 @@ jobs:
       run: |
         cd $OPENWRTROOT
         echo -e "$(nproc) thread compile"
-        make tools/compile -j$(nproc)
         make toolchain/compile -j$(nproc)
         make target/compile -j$(nproc)
         make diffconfig
@@ -153,7 +153,7 @@ jobs:
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Upload firmware to release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v2.6.1
       if: steps.tag.outputs.status == 'success' && !cancelled()
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -164,7 +164,7 @@ jobs:
         files: ${{ env.FIRMWARE }}/*
 
     - name: Delete workflow runs
-      uses: Mattraks/delete-workflow-runs@v2
+      uses: Mattraks/delete-workflow-runs@v2.1.0
       with:
         retain_days: 1
         keep_minimum_runs: 1
@@ -179,7 +179,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Delete Artifacts
-      uses: geekyeggo/delete-artifact@v4
+      uses: geekyeggo/delete-artifact@v6
       with:
         name: |
           bin-archive
