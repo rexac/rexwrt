@@ -41,8 +41,12 @@ if ! grep -q "llvm.download-ci-llvm=false" $OPENWRTROOT/feeds/packages/lang/rust
   sed -i 's/$(TARGET_CONFIGURE_ARGS)/--set=llvm.download-ci-llvm=false \\\n\t$(TARGET_CONFIGURE_ARGS)/g' $OPENWRTROOT/feeds/packages/lang/rust/Makefile
 fi
 
-# gpgme: disable fortify-source to prevent musl and gcc-14 fortify header conflicts
-sed -i '/TARGET_CFLAGS += -D_LARGEFILE64_SOURCE/a\  TARGET_CFLAGS += -U_FORTIFY_SOURCE' $OPENWRTROOT/feeds/packages/libs/gpgme/Makefile
-
 # coremark: fix parallel build mkdir race condition
 sed -i 's/mkdir \$(PKG_BUILD_DIR)\/\$(ARCH)/mkdir -p \$(PKG_BUILD_DIR)\/\$(ARCH)/g' $OPENWRTROOT/package/coremark/Makefile
+
+# Fix gpgme 1.24.2 cross-compilation with musl toolchain
+sed -i '/\$(eval \$(call BuildPackage,libgpgme))/i\
+define Build/Compile\n\
+\tfind $(PKG_BUILD_DIR) -type f -name Makefile -exec sed -i "s|-I/usr/include||g" {} +\n\
+\t$(call Build/Compile/Default)\n\
+endef\n' $OPENWRTROOT/feeds/packages/libs/gpgme/Makefile
