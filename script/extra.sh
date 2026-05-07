@@ -92,6 +92,8 @@ clone_and_extract https://github.com/immortalwrt/luci applications/luci-app-argo
 
 # Add Nikki
 if [ ! -d "$OPENWRTROOT/feeds/luci/applications/luci-app-nikki" ]; then
+  clone_and_extract https://github.com/nikkinikki-org/OpenWrt-nikki mihomo-alpha
+  clone_and_extract https://github.com/nikkinikki-org/OpenWrt-nikki mihomo-meta
   clone_and_extract https://github.com/nikkinikki-org/OpenWrt-nikki nikki
   clone_and_extract https://github.com/nikkinikki-org/OpenWrt-nikki luci-app-nikki
 fi
