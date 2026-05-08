@@ -46,6 +46,7 @@ elif [ "$KERNEL_ONLY" -eq 1 ]; then
 else
     DO_KERNEL=0; DO_UBOOT=1
 fi
+UBOOT_FAILED=0
 
 if [ -z "$OPENWRT_ROOT" ]; then
     # Attempt to detect the openwrt folder in the current directory by default, or provide via environment variables
@@ -130,17 +131,13 @@ BEGIN {
             opp_injected = 1
         }
     }
-    
-    # Fix the new file hunk context line count
-    if ($0 ~ /^@@ -0,0 \+1,[0-9]+ @@/) {
-        print "@@ -0,0 +1,226 @@"
-        next
-    }
 
     # Inject include cpu-opp.dtsi
     if ($0 == "+#include \"sun50i-h5.dtsi\"") {
         print $0
-        print "+#include \"sun50i-h5-cpu-opp.dtsi\""
+        if (ENVIRON["INJECT_OPP_INCLUDE"] != "0") {
+            print "+#include \"sun50i-h5-cpu-opp.dtsi\""
+        }
         next
     }
 
@@ -171,6 +168,7 @@ if [ "$DO_KERNEL" -eq 1 ]; then
         # Get actual minor kernel version (e.g. 6.6, 6.12)
         base_ver="${ver_dir#sunxi-}"
         base_ver="${base_ver#dev-}"
+        export KERN_VER_TAG="v${base_ver}"
         
         target_dir="$REPO_ROOT/patch/kernel/sunxi/patches-${base_ver}"
         target_file="$target_dir/$TARGET_NAME"
@@ -189,14 +187,68 @@ if [ "$DO_KERNEL" -eq 1 ]; then
             continue
         fi
         
-        # Attempt to download. If HTTP fails (some versions may lack this file), skip it
+        # Attempt to download patch or fallback to DTS
+        patch_ready=0
         if curl -f -s -S "$patch_url" -o /tmp/raw.patch; then
+            patch_ready=1
+        else
+            echo "  [I] Patch not found, attempting to construct it from DTS ..."
+            dts_url="${BASE_URL}/patch/kernel/archive/${ver_dir}/dt_64/sun50i-h5-nanopi-neo-core2.dts"
+            if curl -f -s -S "$dts_url" -o /tmp/raw_core2.dts; then
+                kern_makefile_url="https://raw.githubusercontent.com/torvalds/linux/${KERN_VER_TAG}/arch/arm64/boot/dts/allwinner/Makefile"
+                if curl -f -s -S "$kern_makefile_url" -o /tmp/kernel_makefile_base; then
+                    rm -rf /tmp/gen_raw_patch
+                    mkdir -p /tmp/gen_raw_patch/arch/arm64/boot/dts/allwinner
+                    cp /tmp/kernel_makefile_base /tmp/gen_raw_patch/arch/arm64/boot/dts/allwinner/Makefile
+                    
+                    (
+                        cd /tmp/gen_raw_patch
+                        git init -q
+                        git config user.email "github-actions@users.noreply.github.com"
+                        git config user.name "github-actions"
+                        git add arch
+                        git commit -m "base" -q
+                        
+                        awk '{ 
+                            print $0
+                            if ($0 ~ /^dtb-\$\(CONFIG_ARCH_SUNXI\) \+= sun50i-h5-nanopi-neo2\.dtb[[:space:]]*$/) {
+                                print "dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h5-nanopi-neo-core2.dtb"
+                            }
+                        }' arch/arm64/boot/dts/allwinner/Makefile > arch/arm64/boot/dts/allwinner/Makefile.new
+                        mv arch/arm64/boot/dts/allwinner/Makefile.new arch/arm64/boot/dts/allwinner/Makefile
+                        
+                        cp /tmp/raw_core2.dts arch/arm64/boot/dts/allwinner/sun50i-h5-nanopi-neo-core2.dts
+                        git add arch
+                        git diff --cached > /tmp/raw.patch || true
+                    )
+                    
+                    if [ -s "/tmp/raw.patch" ]; then
+                        echo "  [✓] Successfully generated /tmp/raw.patch from DTS"
+                        patch_ready=1
+                    else
+                        echo "  [✗] Failed to generate raw patch, skipping."
+                    fi
+                else
+                    echo "  [✗] Failed to fetch base Makefile, cannot generate patch."
+                fi
+            else
+                echo "  [⚠] Patch and DTS not found for version ( ${ver_dir} ), skipping."
+            fi
+        fi
+
+        if [ "$patch_ready" -eq 1 ]; then
             mkdir -p "$target_dir"
             
-            export KERN_VER_TAG="v${base_ver}"
+            # KERN_VER_TAG is already exported
             export KERN_HUNK_FILE="/tmp/kernel_makefile_hunk"
             export OPP_HUNK_FILE="/tmp/kernel_opp.patch"
             rm -f "$OPP_HUNK_FILE" "$KERN_HUNK_FILE"
+            
+            if grep -q '+#include "sun50i-h5-cpu-opp.dtsi"' /tmp/raw.patch; then
+                export INJECT_OPP_INCLUDE=0
+            else
+                export INJECT_OPP_INCLUDE=1
+            fi
             
             # --- [Dynamically fetch CPU_OPP to generate accurate context] ---
             kern_opp_url="https://raw.githubusercontent.com/torvalds/linux/${KERN_VER_TAG}/arch/arm64/boot/dts/allwinner/sun50i-h5-cpu-opp.dtsi"
@@ -249,13 +301,44 @@ if [ "$DO_KERNEL" -eq 1 ]; then
                 echo "  [⚠] Failed to fetch OPP file for Kernel ${KERN_VER_TAG}, skipping OPP node injection."
             fi
             
-            awk -f /tmp/transform_patch.awk /tmp/raw.patch > "$target_file"
+            awk -f /tmp/transform_patch.awk /tmp/raw.patch > "$target_file.tmp"
+            
+            # Srictly recalculate the hunk size for the new DTS file
+            awk '
+            { lines[NR] = $0 }
+            /^diff --git a\/arch\/arm64\/boot\/dts\/allwinner\/sun50i-h5-nanopi-neo2-black\.dts/ { in_target = 1 }
+            /^@@ -0,0 \+1,[0-9]+ @@/ {
+                if (in_target) {
+                    hunk_header_line = NR
+                    plus_count = 0
+                    in_hunk = 1
+                }
+            }
+            {
+                if (in_hunk && NR > hunk_header_line) {
+                    if (/^diff --git/ || /^-- $/) {
+                        in_hunk = 0
+                        in_target = 0
+                        lines[hunk_header_line] = "@@ -0,0 +1," plus_count " @@"
+                    } else if (/^\+/ || /^ / || /^-/) {
+                        plus_count++
+                    }
+                }
+            }
+            END {
+                if (in_hunk) {
+                    lines[hunk_header_line] = "@@ -0,0 +1," plus_count " @@"
+                }
+                for (i=1; i<=NR; i++) print lines[i]
+            }
+            ' "$target_file.tmp" > "$target_file"
+            rm -f "$target_file.tmp"
             
             # --- [Dynamically fetch kernel corresponding version Makefile to generate accurate context] ---
             kern_makefile_url="https://raw.githubusercontent.com/torvalds/linux/${KERN_VER_TAG}/arch/arm64/boot/dts/allwinner/Makefile"
             echo "  [I] Fetching Kernel ${KERN_VER_TAG} Makefile to generate real diff ..."
             
-            if curl -f -s -S "$kern_makefile_url" -o /tmp/kernel_makefile; then
+            if [ -f /tmp/kernel_makefile_base ] && cp /tmp/kernel_makefile_base /tmp/kernel_makefile || curl -f -s -S "$kern_makefile_url" -o /tmp/kernel_makefile; then
                 awk '{ 
                     print $0
                     # Match neo2.dtb and insert neo2-black.dtb after it
@@ -319,8 +402,6 @@ if [ "$DO_KERNEL" -eq 1 ]; then
             fi
             
             echo "[✓] Written: patch/kernel/sunxi/patches-${base_ver}/${TARGET_NAME}"
-        else
-            echo "[⚠] Patch not found or download failed for version ( ${ver_dir} ), skipping."
         fi
     done
 fi
@@ -348,11 +429,11 @@ if [ "$DO_UBOOT" -eq 1 ]; then
                 /tmp/raw_uboot.patch > /tmp/transformed_uboot.patch
         else
             echo "[✗] Failed to download U-Boot patch"
-            DO_UBOOT=2 # Mark as failed
+            UBOOT_FAILED=1 # Mark as failed
         fi
     fi
     
-    if [ "$DO_UBOOT" -ne 2 ]; then
+    if [ "$UBOOT_FAILED" -eq 0 ]; then
         for ub_ver in "$UBOOT_VER_DETECT"; do
             target_dir="$REPO_ROOT/patch/u-boot/uboot-sunxi/patches"
             target_file="$target_dir/$TARGET_UB_NAME"
@@ -436,5 +517,8 @@ if [ "$DO_UBOOT" -eq 1 ]; then
 fi
 
 # Cleanup
-rm -f /tmp/transform_patch.awk /tmp/raw.patch /tmp/raw_uboot.patch /tmp/transformed_uboot.patch
+rm -rf /tmp/transform_patch.awk /tmp/raw.patch /tmp/raw_uboot.patch /tmp/transformed_uboot.patch \
+       /tmp/gen_raw_patch /tmp/gen_patch_opp /tmp/gen_patch_mk /tmp/gen_patch_uboot \
+       /tmp/kernel_makefile_base /tmp/raw_core2.dts /tmp/kernel_opp* /tmp/kernel_makefile* \
+       /tmp/patch_stat* /tmp/uboot_makefile*
 echo "=== Done ==="
