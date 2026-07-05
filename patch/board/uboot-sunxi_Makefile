@@ -5,4 +5,5 @@ define U-Boot/nanopi_neo2_black
   DEPENDS:=+PACKAGE_u-boot-nanopi_neo2_black:trusted-firmware-a-sunxi-a64
   UENV:=a64
   ATF:=a64
+  UBOOT_MAKE_FLAGS += PKG_CONFIG_SYSROOT_DIR="$(STAGING_DIR_HOST)"
 endef
