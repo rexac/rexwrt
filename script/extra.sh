@@ -15,7 +15,7 @@ clone_and_extract() {
 
 # Remove duplicate packages
 pushd $OPENWRTROOT/feeds/luci/applications
-rm -rf luci-app-argon-config luci-app-cpufreq luci-app-diskman luci-app-mosdns luci-app-openclash luci-app-tailscale || true
+rm -rf luci-app-argon-config luci-app-cpufreq luci-app-diskman luci-app-mosdns luci-app-openclash || true
 popd
 
 pushd $OPENWRTROOT/feeds/luci/themes
@@ -70,9 +70,6 @@ fi
 
 # Add luci-app-podman
 git clone https://github.com/Zerogiven-OpenWRT-Packages/luci-app-podman
-
-# Add luci-app-tailscale
-git clone https://github.com/asvow/luci-app-tailscale
 
 # Add luci-app-zerotier
 if [ ! -d "$OPENWRTROOT/feeds/luci/applications/luci-app-zerotier" ]; then

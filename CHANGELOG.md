@@ -2,7 +2,9 @@
 ###### (auto syncing with the upstream repository)
 
 ## 20260712
+* luci-app-tailscale-community✔
 * ~~luci-app-easytier~~
+* ~~luci-app-tailscale~~
 
 ---
 

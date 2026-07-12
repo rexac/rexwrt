@@ -17,5 +17,4 @@
 
 - [luci-app-diskman](https://github.com/lisaac/luci-app-diskman)
 - [luci-app-mosdns](https://github.com/sbwml/luci-app-mosdns)
-- [luci-app-tailscale](https://github.com/asvow/luci-app-tailscale)
 - [OpenWrt-nikki](https://github.com/nikkinikki-org/OpenWrt-nikki)
