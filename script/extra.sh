@@ -50,11 +50,6 @@ mkdir parted
 wget https://raw.githubusercontent.com/lisaac/luci-app-diskman/master/Parted.Makefile -O parted/Makefile
 clone_and_extract https://github.com/lisaac/luci-app-diskman applications/luci-app-diskman
 
-# Add luci-app-easytier
-if [ ! -d "$OPENWRTROOT/feeds/luci/applications/luci-app-easytier" ]; then
-  git clone https://github.com/EasyTier/luci-app-easytier
-fi
-
 # Add luci-app-irqbalance
 if [ ! -d "$OPENWRTROOT/feeds/luci/applications/luci-app-irqbalance" ]; then
   clone_and_extract https://github.com/openwrt/luci applications/luci-app-irqbalance
