@@ -19,9 +19,6 @@ done
 # Use dnsmasq-full instead of dnsmasq
 sed -i 's/dnsmasq /dnsmasq-full /' $OPENWRTROOT/include/target.mk
 
-# Replace the default startup script and configuration of tailscale.
-sed -i '/\/etc\/init\.d\/tailscale/d;/\/etc\/config\/tailscale/d;' $OPENWRTROOT/feeds/packages/net/tailscale/Makefile
-
 # tailscale: bomp version to latest.
 VER=$(curl -sSL https://api.github.com/repos/tailscale/tailscale/releases/latest | jq -r .tag_name | sed 's/v//')
 HASH=$(wget -qO- "https://github.com/tailscale/tailscale/archive/refs/tags/v${VER}.tar.gz" | sha256sum | awk '{print $1}')
