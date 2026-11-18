@@ -62,12 +62,13 @@ if grep -q '^define Device/friendlyarm_nanopi-r28s$' "$after/$image"; then
   ' "$after/$image" > "$work/image.mk" || upstream_die 'Cannot extend upstream R28S profile'
   mv "$work/image.mk" "$after/$image"
 else
+  grep -q '^define Device/rk3528$' "$after/$image" || upstream_die 'Missing upstream RK3528 image template'
   cat >> "$after/$image" <<'PROFILE'
 
 define Device/friendlyarm_nanopi-r28s
+  $(Device/rk3528)
   DEVICE_VENDOR := FriendlyElec
   DEVICE_MODEL := NanoPi R28S
-  SOC := rk3528
   DEVICE_DTS := rk3528-nanopi-r28s
   UBOOT_DEVICE_NAME := rexwrt-r28s
   DEVICE_PACKAGES := u-boot-rexwrt-r28s kmod-r8169 kmod-gpio-button-hotplug \

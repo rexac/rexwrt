@@ -77,7 +77,7 @@ for kernel in 6.99 7.11 7.12; do
   printf 'KERNEL_PATCHVER:=%s\n' "$kernel" > "$tree/target/linux/rockchip/Makefile"
   printf 'LINUX_VERSION-%s = .7\n' "$kernel" > "$tree/target/linux/generic/kernel-$kernel"
   printf 'PKG_VERSION:=7.12.1\n' > "$tree/package/kernel/mac80211/Makefile"
-  printf 'define Device/existing\nendef\n' > "$tree/target/linux/rockchip/image/armv8.mk"
+  printf 'define Device/rk3528\n  SOC := rk3528\n  KERNEL_LOADADDR := 0x03000000\nendef\n' > "$tree/target/linux/rockchip/image/armv8.mk"
   if [[ "$kernel" == 7.12 ]]; then
     printf 'define Device/friendlyarm_nanopi-r28s\n  UBOOT_DEVICE_NAME := upstream-r28s\nendef\n' >> "$tree/target/linux/rockchip/image/armv8.mk"
   fi
@@ -110,6 +110,16 @@ NETWORK
     grep -q 'UBOOT_DEVICE_NAME := upstream-r28s' "$tree/target/linux/rockchip/image/armv8.mk" || fail 'upstream boot selection changed'
     [[ ! -d "$tree/package/boot/uboot-rexwrt-r28s" ]] || fail 'redundant boot package generated'
   else
+    # Evaluate the generated profile: setting SOC alone leaves FIT addresses empty.
+    addresses=$(make --no-print-directory -s -f - PROFILE_FILE="$tree/target/linux/rockchip/image/armv8.mk" <<'MAKE'
+include $(PROFILE_FILE)
+$(eval $(Device/friendlyarm_nanopi-r28s))
+.PHONY: inspect
+inspect:
+	@printf '%s %s %s\n' '$(SOC)' '$(KERNEL_LOADADDR)' '$(if $(KERNEL_ENTRY),$(KERNEL_ENTRY),$(KERNEL_LOADADDR))'
+MAKE
+    )
+    [[ "$addresses" == 'rk3528 0x03000000 0x03000000' ]] || fail "invalid FIT addresses: $addresses"
     grep -q 'u-boot-rexwrt-r28s' "$tree/target/linux/rockchip/image/armv8.mk" || fail 'boot package selection'
     grep -q 'https://github.com/u-boot/u-boot.git' "$tree/package/boot/uboot-rexwrt-r28s/Makefile" || fail 'official boot source'
     cmp "$sources/boot/files/rk3528_ddr_fixture.bin" "$tree/package/boot/uboot-rexwrt-r28s/files/rk3528_ddr_fixture.bin" || fail 'binary firmware damaged'
