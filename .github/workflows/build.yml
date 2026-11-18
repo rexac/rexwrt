@@ -37,9 +37,12 @@ jobs:
       - name: Combine disks
         uses: easimon/maximize-build-space@master
         with:
+          # Mount only build output; mounting the workspace hides the checkout.
+          build-mount-path: ${{ github.workspace }}/work
           swap-size-mb: 1024
           temp-reserve-mb: 100
-          root-reserve-mb: 1024
+          # Prebuilt host tools are pulled through Docker on the root filesystem.
+          root-reserve-mb: 8192
       - name: Clone OpenWrt
         run: ./rexwrt clone
       - name: Install feeds
