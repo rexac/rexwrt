@@ -35,9 +35,9 @@ while keeping at least the latest 20 runs per workflow. It also supports manual 
 ## NanoPi R28S
 
 Stable and snapshot use generated patches for the selected OpenWrt kernel.
-Each fresh build resolves current Linux, U-Boot, Armbian and Radxa branches;
+Each fresh build resolves current Linux, U-Boot and FriendlyElec branches;
 U-Boot prefers official `main`, then official `next` when R28S support is missing.
-Wireless integration follows Armbian's AIC8800D80 SDIO/UART setup.
+Wi-Fi, firmware and UART Bluetooth follow FriendlyWrt's official R28S sources.
 Resolved revisions are embedded in the firmware and copied beside release images.
 
 This adaptation is experimental; full firmware and hardware validation, including

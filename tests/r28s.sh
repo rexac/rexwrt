@@ -62,9 +62,9 @@ cat > "$sources/vendor-board.dts" <<'DTS'
  };
 };
 DTS
-printf 'request_module("aic8800_fdrv_sdio");\n' > "$sources/hci_aic.c"
+printf 'request_module("aic8800_fdrv");\n' > "$sources/hci_aic.c"
 sha=1111111111111111111111111111111111111111
-jq -n --arg sha "$sha" '{boot:$sha,aic:$sha,boot_repo:"u-boot/u-boot",boot_config:"nanopi-zero2-rk3528",ddr:"rk3528_ddr_fixture.bin",bl31:"rk3528_bl31_fixture.elf"}' > "$sources/sources.json"
+jq -n --arg sha "$sha" '{boot:$sha,aic:$sha,aic_repo:"friendlyarm/aic8800",boot_repo:"u-boot/u-boot",boot_config:"nanopi-zero2-rk3528",ddr:"rk3528_ddr_fixture.bin",bl31:"rk3528_bl31_fixture.elf"}' > "$sources/sources.json"
 printf 'u-boot/u-boot\tnext\t%s\n' "$sha" > "$sources/sources.tsv"
 printf 'firmware\000fixture\n' > "$sources/boot/files/rk3528_ddr_fixture.bin"
 printf 'firmware\000fixture\n' > "$sources/boot/files/rk3528_bl31_fixture.elf"
@@ -116,6 +116,8 @@ NETWORK
   fi
   grep -q 'request_module("aic8800_fdrv")' "$tree/target/linux/rockchip/patches-$kernel/999-rexwrt-r28s.patch" || fail 'Bluetooth module linkage'
   grep -q 'kmod-aic8800-sdio' "$tree/target/linux/rockchip/image/armv8.mk" || fail 'wireless package selection'
+  grep -q 'https://github.com/friendlyarm/aic8800.git' "$tree/package/kernel/aic8800-sdio/Makefile" || fail 'official wireless source'
+  grep -q 'CONFIG_AIC_FW_PATH=/lib/firmware/aic' "$tree/package/kernel/aic8800-sdio/Makefile" || fail 'official firmware path'
   manifest "$tree" > "$work/before"
   "$project/rexwrt" adapt --device nanopi-r28s --source "$tree" > "$work/log"
   manifest "$tree" > "$work/after"
@@ -154,3 +156,48 @@ grep -q '#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0)' "$work/guards.out" 
 grep -q '#if CFG80211_VERSION >= KERNEL_VERSION(6, 14, 0)' "$work/guards.out" || fail 'enclosing wireless guard unchanged'
 grep -q '#if CFG80211_VERSION >= KERNEL_VERSION(6, 10, 0)' "$work/guards.out" || fail 'optional wireless callback argument guard unchanged'
 printf 'PASS: wireless and core-kernel version guards remain independent\n'
+
+# Stable and snapshot may share wireless headers while using different kernels.
+mkdir -p "$work/driver/aic8800_fdrv" "$work/driver/aic8800_bsp" "$work/driver/fw/aic8800D80" "$work/headers/include/linux"
+cat > "$work/cfg80211.h" <<'C'
+int (*set_tx_power)(struct wiphy *wiphy, struct wireless_dev *wdev, int radio_idx, int type);
+int (*set_wiphy_params)(struct wiphy *wiphy, int radio_idx, u32 changed);
+int (*set_monitor_channel)(struct wiphy *wiphy, struct net_device *dev, void *chandef);
+C
+cat > "$work/driver.c" <<'C'
+static int rwnx_cfg80211_set_tx_power(struct wiphy *wiphy, struct wireless_dev *wdev,
+int type, int mbm) { return 0; }
+static int rwnx_cfg80211_set_wiphy_params(struct wiphy *wiphy, u32 changed) { return 0; }
+static int rwnx_cfg80211_set_monitor_channel(struct wiphy *wiphy,
+struct cfg80211_chan_def *chandef) { return 0; }
+rwnx_cfg80211_set_monitor_channel(wiphy, NULL);
+del_timer_sync(&timer);
+MODULE_IMPORT_NS(VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver);
+C
+for api in legacy current; do
+  cp "$work/driver.c" "$work/driver/aic8800_fdrv/rwnx_main.c"
+  if [[ "$api" == legacy ]]; then
+    printf 'int del_timer_sync(struct timer_list *timer);\n' > "$work/headers/include/linux/timer.h"
+    printf '#define MODULE_IMPORT_NS(ns) MODULE_INFO(import_ns, __stringify(ns))\n' > "$work/headers/include/linux/module.h"
+  else
+    printf 'int timer_delete_sync(struct timer_list *timer);\n' > "$work/headers/include/linux/timer.h"
+    printf '#define MODULE_IMPORT_NS(ns) MODULE_INFO(import_ns, ns)\n' > "$work/headers/include/linux/module.h"
+  fi
+  bash "$project/devices/nanopi-r28s/prepare-wireless.sh" "$work/driver" "$work/headers" "$work/cfg80211.h"
+  result=$work/driver/aic8800_fdrv/rwnx_main.c
+  grep -q 'int radio_idx,' "$result" || fail 'wireless radio argument missing'
+  grep -q 'int radio_idx, u32 changed' "$result" || fail 'wiphy radio argument missing'
+  grep -q 'struct net_device \*dev,' "$result" || fail 'monitor device argument missing'
+  grep -q 'rwnx_cfg80211_set_monitor_channel(wiphy, NULL, NULL)' "$result" || fail 'internal monitor call not adapted'
+  if [[ "$api" == legacy ]]; then
+    grep -q 'del_timer_sync(&timer)' "$result" || fail 'legacy timer call changed'
+    grep -q 'MODULE_IMPORT_NS(VFS_' "$result" || fail 'legacy namespace syntax changed'
+  else
+    grep -q 'timer_delete_sync(&timer)' "$result" || fail 'current timer call missing'
+    grep -q 'MODULE_IMPORT_NS("VFS_' "$result" || fail 'current namespace not quoted'
+  fi
+  cp "$result" "$work/prepared.c"
+  bash "$project/devices/nanopi-r28s/prepare-wireless.sh" "$work/driver" "$work/headers" "$work/cfg80211.h"
+  cmp "$result" "$work/prepared.c" || fail 'repeat driver configuration changed sources'
+done
+printf 'PASS: FriendlyElec driver adaptation follows wireless and core header APIs independently\n'

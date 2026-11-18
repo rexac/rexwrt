@@ -2,9 +2,9 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=aic8800-sdio
 PKG_VERSION:=@AIC@
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=https://github.com/radxa-pkg/aic8800.git
+PKG_SOURCE_URL:=https://github.com/friendlyarm/aic8800.git
 PKG_SOURCE_VERSION:=@AIC@
 PKG_MIRROR_HASH:=skip
 PKG_LICENSE:=GPL-2.0
@@ -15,16 +15,16 @@ STAMP_CONFIGURED_DEPENDS:=$(STAGING_DIR)/usr/include/mac80211-backport/backport/
 include $(INCLUDE_DIR)/kernel.mk
 include $(INCLUDE_DIR)/package.mk
 
-AIC_DIR=$(PKG_BUILD_DIR)/src/SDIO/driver_fw/driver/aic8800
-CFG80211_VERSION:=$(shell sed -n 's/^PKG_VERSION:=//p' $(TOPDIR)/package/kernel/mac80211/Makefile | \
-	awk -F. 'NF >= 2 && $$1 ~ /^[0-9]+$$/ && $$2 ~ /^[0-9]+$$/ {print $$1*65536+$$2*256+(($$3+0)>255?255:$$3+0)}')
+AIC_DIR=$(PKG_BUILD_DIR)
+CFG80211_VERSION:=$(shell sed -nE 's/^PKG_(SOURCE_)?VERSION:=([0-9]+\.[0-9]+(\.[0-9]+)?).*$$/\2/p' $(TOPDIR)/package/kernel/mac80211/Makefile | \
+	awk -F. 'NF >= 2 {print $$1*65536+$$2*256+(($$3+0)>255?255:$$3+0); exit}')
 ifeq ($(CFG80211_VERSION),)
   $(error Cannot detect OpenWrt cfg80211 backport version)
 endif
 
 define KernelPackage/aic8800-sdio
   SUBMENU:=Wireless Drivers
-  TITLE:=Radxa AIC8800 SDIO Wi-Fi
+  TITLE:=FriendlyElec AIC8800 SDIO Wi-Fi
   DEPENDS:=@TARGET_rockchip_armv8 +kmod-cfg80211 +kmod-mmc +aic8800-sdio-firmware
   FILES:= \
 	$(AIC_DIR)/aic8800_bsp/aic8800_bsp.ko \
@@ -35,7 +35,7 @@ endef
 define Package/aic8800-sdio-firmware
   SECTION:=firmware
   CATEGORY:=Firmware
-  TITLE:=Radxa AIC8800 SDIO Wi-Fi and Bluetooth firmware
+  TITLE:=FriendlyElec AIC8800 SDIO Wi-Fi and Bluetooth firmware
   PKGARCH:=all
   LICENSE:=Proprietary
 endef
@@ -52,9 +52,8 @@ define KernelPackage/r28s-bluetooth
 	CONFIG_BT_HCIUART_AIC=y
 endef
 
-define Build/Prepare
-	$(call Build/Prepare/Default)
-	bash ./prepare.sh $(PKG_BUILD_DIR)
+define Build/Configure
+	bash ./prepare.sh $(PKG_BUILD_DIR) $(LINUX_DIR) $(STAGING_DIR)/usr/include/mac80211/net/cfg80211.h
 endef
 
 NOSTDINC_FLAGS:= \
@@ -69,12 +68,13 @@ NOSTDINC_FLAGS:= \
 define Build/Compile
 	+$(KERNEL_MAKE) $(PKG_JOBS) M=$(AIC_DIR) \
 		CONFIG_AIC8800_BTLPM_SUPPORT= CONFIG_AIC8800_WLAN_SUPPORT=m CONFIG_AIC_WLAN_SUPPORT=m \
+		CONFIG_AIC_FW_PATH=/lib/firmware/aic \
 		CONFIG_PLATFORM_UBUNTU=y NOSTDINC_FLAGS="$(NOSTDINC_FLAGS)" modules
 endef
 
 define Package/aic8800-sdio-firmware/install
-	$(INSTALL_DIR) $(1)/lib/firmware/aic8800_fw/SDIO
-	$(CP) $(PKG_BUILD_DIR)/src/SDIO/driver_fw/fw/. $(1)/lib/firmware/aic8800_fw/SDIO/
+	$(INSTALL_DIR) $(1)/lib/firmware/aic
+	$(CP) $(PKG_BUILD_DIR)/fw/aic8800D80/. $(1)/lib/firmware/aic/
 endef
 
 $(eval $(call KernelPackage,aic8800-sdio))
