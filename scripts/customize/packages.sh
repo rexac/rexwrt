@@ -12,6 +12,10 @@ clone_and_extract() {
   [[ -z "$branch" ]] || args+=(--branch "$branch")
   git clone "${args[@]}" "$repo" "$work/repository"
   git -C "$work/repository" sparse-checkout set "$path"
+  if [[ ! -f "$work/repository/$path/Makefile" ]]; then
+    printf 'Missing package recipe: %s at %s (%s)\n' "$path" "$repo" "${branch:-default branch}" >&2
+    exit 1
+  fi
   mkdir -p "$target"
   cp -R "$work/repository/$path/." "$target/"
   rm -rf "$work/repository"
@@ -47,7 +51,6 @@ if [[ ! -d "$OPENWRTROOT/feeds/luci/applications/luci-app-zerotier" ]]; then
   clone_and_extract https://github.com/immortalwrt/luci applications/luci-app-zerotier
 fi
 clone_and_extract https://github.com/immortalwrt/luci themes/luci-theme-argon
-clone_and_extract https://github.com/immortalwrt/luci applications/luci-app-argon-config
 if [[ ! -d "$OPENWRTROOT/feeds/luci/applications/luci-app-nikki" ]]; then
   for path in mihomo-alpha mihomo-meta nikki luci-app-nikki; do
     clone_and_extract https://github.com/nikkinikki-org/OpenWrt-nikki "$path"
