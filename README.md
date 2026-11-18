@@ -27,6 +27,8 @@ Run `./rexwrt help` for commands and options, or `./rexwrt check` for offline ch
 Run **Build** with a device name and OpenWrt branch/tag.
 **Repo Dispatcher** triggers both snapshot and the latest stable release for each device;
 it requires the `SEC_TOKEN` repository secret with dispatch permission.
+**Cleanup workflow runs** runs daily, deleting completed runs older than 30 days
+while keeping at least the latest 20 runs per workflow. It also supports manual dry runs.
 
 ## NanoPi R28S
 

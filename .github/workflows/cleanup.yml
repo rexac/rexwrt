@@ -1,0 +1,41 @@
+name: Cleanup workflow runs
+
+on:
+  schedule:
+    - cron: '23 19 * * *'
+  workflow_dispatch:
+    inputs:
+      retention_days:
+        description: Keep runs updated within this many days
+        default: '30'
+        required: true
+      minimum_runs:
+        description: Always keep this many latest runs per workflow
+        default: '20'
+        required: true
+      dry_run:
+        description: List candidates without deleting runs
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: cleanup-workflow-runs
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - name: Delete old completed runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RETENTION_DAYS: ${{ inputs.retention_days || '30' }}
+          MINIMUM_RUNS: ${{ inputs.minimum_runs || '20' }}
+          DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+        run: bash ci/cleanup-workflow-runs.sh
