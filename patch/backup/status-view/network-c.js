@@ -1,2 +1,0 @@
-,
-		    onlineusers = data[4]
