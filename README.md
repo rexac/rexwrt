@@ -3,6 +3,7 @@
 Customized OpenWrt builds for `nanopi-neo2-black`, `nanopi-r28s`, and `x86-64`.
 Default LAN IP: `10.0.0.1`.
 NEO2 Black board patches are generated from Armbian for the detected kernel and U-Boot versions; its CPU info patch is generated from the matching Linux source.
+Go build recipes follow official OpenWrt `packages/master` on both stable and snapshot builds.
 
 ## Build
 

@@ -15,8 +15,7 @@ if [[ -f "$tailscale" ]]; then
   sed -i "/^PKG_VERSION:=/c\\PKG_VERSION:=$version" "$tailscale"
   sed -i "/^PKG_HASH:=/c\\PKG_HASH:=${digest%% *}" "$tailscale"
 fi
-rm -rf "$OPENWRTROOT/feeds/packages/lang/golang"
-git clone --depth 1 https://github.com/sbwml/packages_lang_golang "$OPENWRTROOT/feeds/packages/lang/golang"
+bash "$(dirname "${BASH_SOURCE[0]}")/golang.sh"
 rust=$OPENWRTROOT/feeds/packages/lang/rust/Makefile
 if [[ -f "$rust" ]]; then
   sed -i 's/llvm.download-ci-llvm=true/llvm.download-ci-llvm=false/g' "$rust"
