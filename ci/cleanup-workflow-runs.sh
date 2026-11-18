@@ -2,7 +2,7 @@
 # Keep recent history and a minimum per workflow, including retired workflows.
 set -euo pipefail
 : "${GITHUB_REPOSITORY:?}" "${GH_TOKEN:?}"
-retention_days=${RETENTION_DAYS:-30}
+retention_days=${RETENTION_DAYS:-7}
 minimum_runs=${MINIMUM_RUNS:-20}
 dry_run=${DRY_RUN:-false}
 [[ "$retention_days" =~ ^[1-9][0-9]{0,3}$ && "$minimum_runs" =~ ^[1-9][0-9]{0,3}$ ]] || {

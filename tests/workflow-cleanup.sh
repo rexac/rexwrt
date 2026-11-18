@@ -49,7 +49,7 @@ MOCK
 chmod +x "$work/bin/gh"
 export PATH="$work/bin:$PATH" CLEANUP_FIXTURE=$work
 export GITHUB_REPOSITORY=example/fixture GH_TOKEN=fixture GITHUB_RUN_ID=25
-export RETENTION_DAYS=30 MINIMUM_RUNS=2
+export RETENTION_DAYS=7 MINIMUM_RUNS=2
 DRY_RUN=true bash "$project/ci/cleanup-workflow-runs.sh" > "$work/log"
 [[ ! -f "$work/deleted" ]] || fail 'dry run deleted history'
 [[ $(awk '/^Would delete run / {count++} END {print count+0}' "$work/log") == 3 ]] || fail 'wrong dry-run candidates'
