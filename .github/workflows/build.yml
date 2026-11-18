@@ -62,17 +62,22 @@ jobs:
         id: compile
         continue-on-error: true
         run: ./rexwrt compile
+      - name: Retry compilation with verbose logs
+        id: compile_retry
+        if: ${{ !cancelled() && steps.compile.outcome == 'failure' }}
+        env:
+          V: s
+        run: ./rexwrt compile --jobs 1
       - name: Generate and collect images
         id: images
-        if: steps.compile.outcome == 'success'
+        if: ${{ !cancelled() && (steps.compile.outcome == 'success' || steps.compile_retry.outcome == 'success') }}
         continue-on-error: true
         run: ./rexwrt images
-      - name: Diagnose build failure
-        if: ${{ !cancelled() && (steps.compile.outcome == 'failure' || steps.images.outcome == 'failure') }}
-        run: |
-          cd "$OPENWRTROOT"
-          make -j1 V=s || true
-          exit 1
+      - name: Retry image generation with verbose logs
+        if: ${{ !cancelled() && steps.images.outcome == 'failure' }}
+        env:
+          V: s
+        run: ./rexwrt images --jobs 1
       - name: Prepare release
         if: env.FIRMWARE != ''
         id: release
