@@ -106,9 +106,6 @@ done
 [[ ! -e "$work/curl.log" ]] || fail 'NEO2 dry run accessed network'
 pass 'NEO2 Black dynamically selects kernel and U-Boot versions without dry-run writes'
 
-bash "$root/tests/cpuinfo.sh"
+bash "$root/tests/neo2.sh"
 bash "$root/tests/r28s.sh"
-bash "$root/tests/host-tools.sh"
-bash "$root/tests/neo2-fetch.sh"
-bash "$root/tests/workflow-cleanup.sh"
-bash "$root/tests/golang.sh"
+bash "$root/tests/build.sh"
