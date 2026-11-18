@@ -133,18 +133,19 @@ download_source() {
 }
 compile_source() {
   linux_only; require_source
+  # OpenWrt reads V only as a make command-line variable, not from the environment.
   (
     cd "$OPENWRTROOT"
-    make tools/compile -j"$JOBS"
+    make tools/compile -j"$JOBS" V="${V:-}"
     for target in toolchain/compile target/compile package/compile package/index; do
-      make "$target" -j"$JOBS"
+      make "$target" -j"$JOBS" V="${V:-}"
     done
-    make diffconfig
+    make diffconfig V="${V:-}"
   )
 }
 generate_images() {
   linux_only; require_source
-  (cd "$OPENWRTROOT" && make package/install -j"$JOBS" && make target/install -j"$JOBS")
+  (cd "$OPENWRTROOT" && make package/install -j"$JOBS" V="${V:-}" && make target/install -j"$JOBS" V="${V:-}")
   bash "$REXWRT_ROOT/scripts/collect-images.sh"
 }
 

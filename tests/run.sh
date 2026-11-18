@@ -81,6 +81,27 @@ fi
 [[ $(cat "$work/make.log") == $'tools/compile\ntoolchain/compile\ntarget/compile' ]] || fail 'stages continued after failure'
 pass 'build stage failures propagate and stop subsequent work'
 
+# An environment-only V is ignored by OpenWrt; retry commands must pass V=s.
+cat > "$work/bin/make" <<'MOCK'
+#!/bin/sh
+printf '%s\n' "$*" >> "$MAKE_LOG"
+if [ "${1}" = target/compile ] || [ "${1}" = target/install ]; then exit 1; fi
+MOCK
+for stage in compile images; do
+  : > "$work/verbose.log"
+  if V=s MAKE_LOG="$work/verbose.log" PATH="$work/bin:$PATH" "$root/rexwrt" "$stage" \
+    --device nanopi-r28s --source "$source_tree" --jobs 1 > "$work/error" 2>&1; then
+    fail "verbose $stage failure ignored"
+  fi
+  while IFS= read -r invocation; do
+    [[ "$invocation" == *' -j1 V=s' ]] || fail "missing command-line verbosity: $invocation"
+  done < "$work/verbose.log"
+  if [[ "$stage" == images ]]; then
+    [[ $(cat "$work/verbose.log") == $'package/install -j1 V=s\ntarget/install -j1 V=s' ]] || fail 'image retry did not reach target installation'
+  fi
+done
+pass 'serial retries pass command-line verbosity and propagate build failures'
+
 # NEO2 Black selects Armbian sources from detected versions, not fixed patches.
 neo_tree=$work/neo
 mkdir -p "$neo_tree/include" "$neo_tree/target/linux/sunxi/image" "$neo_tree/package/boot/uboot-sunxi"
