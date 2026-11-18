@@ -50,13 +50,13 @@ cp "$sources/linux/rk3528-nanopi-r28s.dts" "$after/$dts/"
 if ! grep -q 'rk3528-nanopi-r28s.dtb' "$after/$dts/Makefile"; then
   printf '\ndtb-$(CONFIG_ARCH_ROCKCHIP) += rk3528-nanopi-r28s.dtb\n' >> "$after/$dts/Makefile"
 fi
-# Reuse the UART Bluetooth node from FriendlyElec's R28S board DTS.
+# Reuse the UART Bluetooth node from Armbian's selected board DTS.
 awk '
   /^[\t ]*bluetooth \{/ { if (found) exit 1; active=1; found=1 }
   active { print; line=$0; opens=gsub(/\{/, "", line); line=$0; closes=gsub(/\}/, "", line); depth+=opens-closes; if (depth==0) active=0 }
   END { if (!found || active) exit 1 }
-' "$sources/vendor-board.dts" > "$work/bluetooth.node" || upstream_die 'Cannot extract the FriendlyElec UART Bluetooth node'
-grep -q 'cvte,aic8800-bt' "$work/bluetooth.node" || upstream_die 'FriendlyElec Bluetooth binding changed'
+' "$sources/vendor-board.dts" > "$work/bluetooth.node" || upstream_die 'Cannot extract the Armbian UART Bluetooth node'
+grep -q 'cvte,aic8800-bt' "$work/bluetooth.node" || upstream_die 'Armbian Bluetooth binding changed'
 for required in 'gpio-keys {' 'button-user {' '&leds {'; do
   grep -F "$required" "$after/$dts/rk3528-nanopi-r28s.dts" >/dev/null || upstream_die "Upstream board layout changed: $required"
 done
@@ -90,9 +90,11 @@ DTS
 cat "$work/bluetooth.node" >> "$after/$dts/rk3528-nanopi-r28s.dts"
 printf '};\n' >> "$after/$dts/rk3528-nanopi-r28s.dts"
 
-# Port FriendlyElec's UART protocol into the target kernel's HCI UART driver.
+# Port Armbian's UART protocol into the target kernel's existing HCI UART driver.
 cp "$sources/hci_aic.c" "$after/drivers/bluetooth/hci_aic.c"
-grep -q 'request_module("aic8800_fdrv")' "$sources/hci_aic.c" || upstream_die 'FriendlyElec Bluetooth firmware loader changed'
+# OpenWrt retains the source module name, unlike the DKMS installation's suffix.
+awk '{ gsub(/request_module\("aic8800_fdrv_sdio"\)/, "request_module(\"aic8800_fdrv\")"); print }' \
+  "$sources/hci_aic.c" > "$after/drivers/bluetooth/hci_aic.c"
 header=$after/drivers/bluetooth/hci_uart.h
 if ! grep -q '^#define HCI_UART_AIC' "$header"; then
   max=$(awk '$1=="#define" && $2=="HCI_UART_MAX_PROTO" {print $3}' "$header")

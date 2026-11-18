@@ -10,7 +10,7 @@ for key in boot aic; do
   [[ "$value" =~ ^[0-9a-f]{40}$ ]] || upstream_die "Invalid $key source revision"
 done
 [[ $(jq -r .boot_repo "$sources/sources.json") == u-boot/u-boot ]] || upstream_die 'Boot source must be the official U-Boot repository'
-[[ $(jq -r .aic_repo "$sources/sources.json") == friendlyarm/aic8800 ]] || upstream_die 'Wireless source must be official FriendlyElec; rediscover older source bundles'
+[[ $(jq -r '.aic_repo // "radxa-pkg/aic8800"' "$sources/sources.json") == radxa-pkg/aic8800 ]] || upstream_die 'Wireless source must be Radxa; rediscover incompatible source bundles'
 boot=$(jq -r .boot "$sources/sources.json")
 aic=$(jq -r .aic "$sources/sources.json")
 bootconfig=$(jq -r .boot_config "$sources/sources.json")

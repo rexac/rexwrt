@@ -10,12 +10,12 @@ There is no dependency on an unmerged OpenWrt PR or a personal fork.
 | Board devicetree | Linux mainline |
 | Bootloader | Official U-Boot `main`, falling back to official `next` while R28S is absent from `main` |
 | DDR and BL31 firmware | Official Rockchip rkbin; names and revision selected together by the latest OpenWrt package |
-| Wireless integration | Latest FriendlyWrt release manifest and its selected RK3528 build scripts |
-| SDIO Wi-Fi driver and firmware | Official `friendlyarm/aic8800` moving `main` branch, installed under `/lib/firmware/aic` |
-| UART Bluetooth protocol and node | Official `friendlyarm/kernel-rockchip` branch selected by that manifest |
+| Wireless integration | Armbian's current R28S configuration |
+| SDIO Wi-Fi driver and firmware | Radxa's current AIC8800 source and SDIO compatibility patch series |
+| UART Bluetooth protocol | Armbian's selected Rockchip vendor-kernel branch |
 
 U-Boot initializes and starts Linux; it does not replace Linux wireless drivers.
-R28S uses AIC8800D80 with SDIO Wi-Fi and UART2 Bluetooth. FriendlyElec's UART protocol
+R28S uses AIC8800D80 with SDIO Wi-Fi and UART2 Bluetooth. Armbian's UART protocol
 requests the SDIO module to load the Bluetooth firmware, so both pieces are needed.
 
 ## Build behavior
@@ -24,9 +24,9 @@ The selected OpenWrt stable or snapshot kernel is retained. The adapter reconstr
 affected files from that exact kernel release and OpenWrt's existing patch queues,
 then generates the board and Bluetooth changes. Wireless API guards use the
 OpenWrt cfg80211 backport version; core-kernel API guards keep the kernel version.
-Driver configuration reads the staged cfg80211 callbacks and target kernel headers
-to adapt radio arguments, timer calls and module namespace syntax independently.
-Unknown board layouts or kernel patch conflicts stop adaptation before modifying the checkout.
+Missing command allocation and lifecycle prototypes are added to the shared driver
+header without disabling compiler diagnostics.
+Unknown layouts or patch conflicts stop adaptation before modifying the checkout.
 
 An existing OpenWrt R28S profile and its bootloader selection are retained. Otherwise,
 a separate package builds official U-Boot without replacing the shared Rockchip
