@@ -12,8 +12,14 @@ while read -r patch options; do
 done < "$root/debian/patches/series"
 driver=$root/src/SDIO/driver_fw/driver/aic8800
 [[ -f "$driver/aic8800_fdrv/rwnx_main.c" && -d "$root/src/SDIO/driver_fw/fw/aic8800D80" ]]
+# Keep legacy vendor prototype warnings visible within this module tree only.
+# Preserve OpenWrt's kernel flags and fatal diagnostics for actual type errors.
+[[ -f "$driver/Makefile" ]] || { echo 'Missing AIC8800 module Makefile' >&2; exit 1; }
+if ! grep -Fxq 'subdir-ccflags-y += -Wno-error=missing-prototypes' "$driver/Makefile"; then
+  printf '\nsubdir-ccflags-y += -Wno-error=missing-prototypes\n' >> "$driver/Makefile"
+fi
 # The command allocator is shared across translation units. Declare its public
-# functions in their shared header instead of disabling missing-prototype errors.
+# functions in their shared header even when legacy private helpers only warn.
 header=$driver/aic8800_fdrv/rwnx_cmds.h
 awk '
   BEGIN {
@@ -45,6 +51,30 @@ awk '
   }
 ' "$header" > "$header.rexwrt" || { rm -f "$header.rexwrt"; echo 'Unrecognized AIC8800 command header' >&2; exit 1; }
 mv "$header.rexwrt" "$header"
+# Initialization is called by rwnx_main.c, so its declaration belongs in the
+# shared utility header, not in an extern declaration confined to the caller.
+header=$driver/aic8800_fdrv/rwnx_utils.h
+awk '
+  { lines[NR]=$0; if ($0 ~ /rwnx_init_aic[[:space:]]*\(.*\)[[:space:]]*;/) present=1 }
+  END {
+    for (i=1; i<=NR; i++) {
+      print lines[i]
+      if (lines[i] ~ /^struct rwnx_hw;[[:space:]]*$/) {
+        anchors++
+        if (!present) print "int rwnx_init_aic(struct rwnx_hw *rwnx_hw);"
+      }
+    }
+    if (anchors != 1) exit 1
+  }
+' "$header" > "$header.rexwrt" || { rm -f "$header.rexwrt"; echo 'Unrecognized AIC8800 utility header' >&2; exit 1; }
+mv "$header.rexwrt" "$header"
+# This workqueue callback is private to rwnx_cmds.c.
+file=$driver/aic8800_fdrv/rwnx_cmds.c
+awk '
+  /^void cmd_mgr_task_process\(/ { $0="static " $0 }
+  { print }
+' "$file" > "$file.rexwrt"
+mv "$file.rexwrt" "$file"
 while IFS= read -r file; do
   awk -f "$script_dir/wireless-guards.awk" "$file" > "$file.rexwrt"
   mv "$file.rexwrt" "$file"

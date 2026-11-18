@@ -62,7 +62,7 @@ cat > "$sources/vendor-board.dts" <<'DTS'
  };
 };
 DTS
-printf 'request_module("aic8800_fdrv_sdio");\n' > "$sources/hci_aic.c"
+printf 'request_module("aic8800_fdrv_sdio");\nh4_recv_buf(hu->hdev, skb, data, count, pkts, n);\n' > "$sources/hci_aic.c"
 sha=1111111111111111111111111111111111111111
 jq -n --arg sha "$sha" '{boot:$sha,aic:$sha,boot_repo:"u-boot/u-boot",boot_config:"nanopi-zero2-rk3528",ddr:"rk3528_ddr_fixture.bin",bl31:"rk3528_bl31_fixture.elf"}' > "$sources/sources.json"
 printf 'u-boot/u-boot\tnext\t%s\n' "$sha" > "$sources/sources.tsv"
@@ -70,6 +70,14 @@ printf 'firmware\000fixture\n' > "$sources/boot/files/rk3528_ddr_fixture.bin"
 printf 'firmware\000fixture\n' > "$sources/boot/files/rk3528_bl31_fixture.elf"
 export REXWRT_R28S_SOURCES=$sources
 for kernel in 6.99 7.11 7.12; do
+  # Exercise both APIs and a changed declaration introduced by a target backport.
+  h4_type=hci_dev h4_arg='hu->hdev'
+  if [[ "$kernel" != 6.99 ]]; then h4_type=hci_uart; h4_arg=hu; fi
+  if [[ "$kernel" == 7.12 ]]; then
+    # A newer vendor implementation may already use the target UART argument.
+    printf 'request_module("aic8800_fdrv_sdio");\nh4_recv_buf(hu, skb, data, count, pkts, n);\n' > "$sources/hci_aic.c"
+  fi
+  printf '#define HCI_UART_MAX_PROTO 13\nstruct sk_buff *h4_recv_buf(\n  struct %s *context, struct sk_buff *skb);\n' "$h4_type" > "$work/kernel/drivers/bluetooth/hci_uart.h"
   tree=$work/openwrt-$kernel
   boarddir=$tree/target/linux/rockchip/armv8/base-files/etc/board.d
   mkdir -p "$tree/include" "$tree/target/linux/rockchip/image" "$tree/target/linux/generic" "$tree/package/kernel/mac80211" "$boarddir"
@@ -77,6 +85,9 @@ for kernel in 6.99 7.11 7.12; do
   printf 'KERNEL_PATCHVER:=%s\n' "$kernel" > "$tree/target/linux/rockchip/Makefile"
   printf 'LINUX_VERSION-%s = .7\n' "$kernel" > "$tree/target/linux/generic/kernel-$kernel"
   printf 'PKG_VERSION:=7.12.1\n' > "$tree/package/kernel/mac80211/Makefile"
+  if [[ "$kernel" == 7.11 ]]; then
+    printf 'PKG_SOURCE_VERSION:=7.12.1\nPKG_VERSION:=$(subst -,_,$(PKG_SOURCE_VERSION))\n' > "$tree/package/kernel/mac80211/Makefile"
+  fi
   printf 'define Device/rk3528\n  SOC := rk3528\n  KERNEL_LOADADDR := 0x03000000\nendef\n' > "$tree/target/linux/rockchip/image/armv8.mk"
   if [[ "$kernel" == 7.12 ]]; then
     printf 'define Device/friendlyarm_nanopi-r28s\n  UBOOT_DEVICE_NAME := upstream-r28s\nendef\n' >> "$tree/target/linux/rockchip/image/armv8.mk"
@@ -102,6 +113,16 @@ NETWORK
   cmp "$work/before" "$work/after" || fail 'failure modified checkout'
   # Do not retain the deliberately missing immutable files between fixtures.
   rm -rf "$work/cache"
+  if [[ "$kernel" == 6.99 ]]; then
+    cp "$work/kernel/drivers/bluetooth/hci_uart.h" "$work/hci_uart.h"
+    sed 's/struct hci_dev/struct unknown_context/' "$work/hci_uart.h" > "$work/kernel/drivers/bluetooth/hci_uart.h"
+    if "$project/rexwrt" adapt --device nanopi-r28s --source "$tree" > "$work/error" 2>&1; then fail 'unknown H4 API accepted'; fi
+    grep -q 'Unrecognized target h4_recv_buf API' "$work/error" || fail 'unknown H4 API diagnostic'
+    manifest "$tree" > "$work/after"
+    cmp "$work/before" "$work/after" || fail 'unknown H4 API modified checkout'
+    mv "$work/hci_uart.h" "$work/kernel/drivers/bluetooth/hci_uart.h"
+    rm -rf "$work/cache"
+  fi
   "$project/rexwrt" adapt --device nanopi-r28s --source "$tree" --dry-run > "$work/log"
   manifest "$tree" > "$work/after"
   cmp "$work/before" "$work/after" || fail 'dry run modified checkout'
@@ -125,6 +146,14 @@ MAKE
     cmp "$sources/boot/files/rk3528_ddr_fixture.bin" "$tree/package/boot/uboot-rexwrt-r28s/files/rk3528_ddr_fixture.bin" || fail 'binary firmware damaged'
   fi
   grep -q 'request_module("aic8800_fdrv")' "$tree/target/linux/rockchip/patches-$kernel/999-rexwrt-r28s.patch" || fail 'Bluetooth module linkage'
+  grep -F "h4_recv_buf($h4_arg, skb" "$tree/target/linux/rockchip/patches-$kernel/999-rexwrt-r28s.patch" >/dev/null || fail 'Bluetooth H4 receive API'
+  # Snapshot uses a Make expression for PKG_VERSION; metadata parsing must still
+  # expose the Wi-Fi and Bluetooth packages rather than silently dropping them.
+  awk '/^CFG80211_VERSION:=/ { active=1 } active { print } active && /^endif/ { exit }' \
+    "$tree/package/kernel/aic8800-sdio/Makefile" > "$work/version.mk"
+  printf '\ninspect:\n\t@echo $(CFG80211_VERSION)\n' >> "$work/version.mk"
+  version=$(make --no-print-directory -s -f "$work/version.mk" TOPDIR="$tree" inspect)
+  [[ "$version" == "$((7*65536+12*256+1))" ]] || fail "wireless metadata version: $version"
   grep -q 'kmod-aic8800-sdio' "$tree/target/linux/rockchip/image/armv8.mk" || fail 'wireless package selection'
   manifest "$tree" > "$work/before"
   "$project/rexwrt" adapt --device nanopi-r28s --source "$tree" > "$work/log"
@@ -172,6 +201,13 @@ for supplied in 0 2 4; do
   mkdir -p "$source_root/debian/patches" "$source_root/src/SDIO/driver_fw/fw/aic8800D80" "$driver"
   : > "$source_root/debian/patches/series"
   : > "$driver/rwnx_main.c"
+  : > "${driver%/*}/Makefile"
+  printf 'void cmd_mgr_task_process(struct work_struct *work)\n{\n}\n' > "$driver/rwnx_cmds.c"
+  {
+    printf '#ifndef _RWNX_IPC_UTILS_H_\n#define _RWNX_IPC_UTILS_H_\nstruct rwnx_hw;\n'
+    if (( supplied )); then printf 'int rwnx_init_aic(struct rwnx_hw *rwnx_hw);\n'; fi
+    printf '#endif\n'
+  } > "$driver/rwnx_utils.h"
   cat > "$work/prototypes" <<'HEADER'
 struct rwnx_cmd *rwnx_cmd_malloc(void);
 void rwnx_cmd_free(struct rwnx_cmd *cmd);
@@ -188,6 +224,9 @@ HEADER
     while IFS= read -r declaration; do
       [[ $(grep -Fxc "$declaration" "$driver/rwnx_cmds.h") == 1 ]] || fail "missing or duplicate prototype: $declaration"
     done < "$work/prototypes"
+    [[ $(grep -Fxc 'int rwnx_init_aic(struct rwnx_hw *rwnx_hw);' "$driver/rwnx_utils.h") == 1 ]] || fail 'missing or duplicate initialization prototype'
+    grep -q '^static void cmd_mgr_task_process(' "$driver/rwnx_cmds.c" || fail 'workqueue callback is not private'
+    [[ $(grep -Fxc 'subdir-ccflags-y += -Wno-error=missing-prototypes' "${driver%/*}/Makefile") == 1 ]] || fail 'vendor diagnostic scope or duplication'
   done
 done
-printf 'PASS: Radxa shared command prototypes cover missing, partial and upstream-fixed headers\n'
+printf 'PASS: Radxa shared API declarations and private callback cover missing, partial and upstream-fixed sources\n'

@@ -91,11 +91,30 @@ cat "$work/bluetooth.node" >> "$after/$dts/rk3528-nanopi-r28s.dts"
 printf '};\n' >> "$after/$dts/rk3528-nanopi-r28s.dts"
 
 # Port Armbian's UART protocol into the target kernel's existing HCI UART driver.
-cp "$sources/hci_aic.c" "$after/drivers/bluetooth/hci_aic.c"
-# OpenWrt retains the source module name, unlike the DKMS installation's suffix.
-awk '{ gsub(/request_module\("aic8800_fdrv_sdio"\)/, "request_module(\"aic8800_fdrv\")"); print }' \
-  "$sources/hci_aic.c" > "$after/drivers/bluetooth/hci_aic.c"
 header=$after/drivers/bluetooth/hci_uart.h
+# Inspect the reconstructed API, including OpenWrt backports, rather than guessing
+# from the kernel version. H4 reception now takes the UART instead of its HCI device.
+h4_arg=$(awk '
+  /h4_recv_buf[[:space:]]*\(/ { active=1 }
+  active {
+    declaration=declaration " " $0
+    if (index($0, ";")) {
+      if (declaration ~ /h4_recv_buf[[:space:]]*\([[:space:]]*struct hci_uart[[:space:]]*\*/) print "hu"
+      else if (declaration ~ /h4_recv_buf[[:space:]]*\([[:space:]]*struct hci_dev[[:space:]]*\*/) print "hu->hdev"
+      active=0; declaration=""
+    }
+  }
+' "$header")
+[[ "$h4_arg" == hu || "$h4_arg" == 'hu->hdev' ]] || upstream_die 'Unrecognized target h4_recv_buf API'
+# OpenWrt retains the source module name, unlike the DKMS installation's suffix.
+awk -v argument="$h4_arg" '
+  {
+    gsub(/request_module\("aic8800_fdrv_sdio"\)/, "request_module(\"aic8800_fdrv\")")
+    calls+=gsub(/h4_recv_buf[[:space:]]*\([[:space:]]*hu(->hdev)?[[:space:]]*,/, "h4_recv_buf(" argument ",")
+    print
+  }
+  END { if (calls != 1) exit 1 }
+' "$sources/hci_aic.c" > "$after/drivers/bluetooth/hci_aic.c" || upstream_die 'Armbian H4 receive call layout changed'
 if ! grep -q '^#define HCI_UART_AIC' "$header"; then
   max=$(awk '$1=="#define" && $2=="HCI_UART_MAX_PROTO" {print $3}' "$header")
   [[ "$max" =~ ^[0-9]+$ ]] || upstream_die 'Cannot allocate an HCI UART protocol ID'

@@ -24,9 +24,13 @@ The selected OpenWrt stable or snapshot kernel is retained. The adapter reconstr
 affected files from that exact kernel release and OpenWrt's existing patch queues,
 then generates the board and Bluetooth changes. Wireless API guards use the
 OpenWrt cfg80211 backport version; core-kernel API guards keep the kernel version.
-Missing command allocation and lifecycle prototypes are added to the shared driver
-header without disabling compiler diagnostics.
+The Bluetooth H4 receive argument follows the reconstructed kernel header.
+Missing shared driver API declarations are added to their headers. Remaining vendor
+`missing-prototypes` diagnostics stay visible as warnings within the AIC8800 package;
+other compiler errors remain fatal.
 Unknown layouts or patch conflicts stop adaptation before modifying the checkout.
+Configuration also stops if required Wi-Fi or UART Bluetooth packages are dropped
+by `defconfig`.
 
 An existing OpenWrt R28S profile and its bootloader selection are retained. Otherwise,
 a separate package builds official U-Boot without replacing the shared Rockchip

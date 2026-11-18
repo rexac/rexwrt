@@ -118,6 +118,12 @@ configure_source() {
     bash "$REXWRT_ROOT/scripts/customize/translations.sh"
     bash "$REXWRT_ROOT/scripts/customize/terminal.sh"
     make defconfig
+    # A failed package metadata scan must not silently produce a wired-only R28S.
+    if [[ "$DEVICE" == nanopi-r28s ]]; then
+      for package in kmod-aic8800-sdio aic8800-sdio-firmware kmod-r28s-bluetooth kmod-hci-uart; do
+        grep -Eq "^CONFIG_PACKAGE_${package}=[ym]$" .config || die "Required R28S package was dropped by defconfig: $package"
+      done
+    fi
     if [[ "$PREBUILT" == 1 ]]; then
       bash "$REXWRT_ROOT/tools/external-host-tools.sh"
       bash "$REXWRT_ROOT/tools/external-toolchain.sh"
