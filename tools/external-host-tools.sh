@@ -41,15 +41,25 @@ fi
 
 echo "Installing prebuilt host tools from ${CONTAINER_IMAGE} ..."
 
+CONTAINER_ID=
+cleanup() {
+  local status=$?
+  if [[ -n "$CONTAINER_ID" ]]; then docker rm "$CONTAINER_ID" >/dev/null 2>&1 || true; fi
+  # Only the workflow's dedicated hosted-runner store may discard the image.
+  if [[ ${REXWRT_DISPOSABLE_DOCKER:-0} == 1 && ${GITHUB_ACTIONS:-} == true && ${RUNNER_ENVIRONMENT:-} == github-hosted ]]; then
+    docker image rm "$CONTAINER_IMAGE" >/dev/null 2>&1 || echo 'Warning: could not remove the temporary host-tools image.' >&2
+  fi
+  return "$status"
+}
+trap cleanup EXIT
 CONTAINER_ID=$(docker create "${CONTAINER_IMAGE}")
-trap 'docker rm "$CONTAINER_ID" >/dev/null 2>&1 || true' EXIT
 
 mkdir -p "${OPENWRTROOT}/staging_dir" "${OPENWRTROOT}/build_dir"
 docker cp "${CONTAINER_ID}:/prebuilt_tools/staging_dir/host" - | tar -xf - -C "${OPENWRTROOT}/staging_dir"
 docker cp "${CONTAINER_ID}:/prebuilt_tools/build_dir/host" - | tar -xf - -C "${OPENWRTROOT}/build_dir"
 
 docker rm "${CONTAINER_ID}"
-trap - EXIT
+CONTAINER_ID=
 
 cd "${OPENWRTROOT}"
 ./scripts/ext-tools.sh --refresh

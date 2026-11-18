@@ -93,6 +93,21 @@ BASE_URL="https://raw.githubusercontent.com/armbian/build/main"
 KNOWN_CORE2_PATCH="arm64-dts-Add-sun50i-h5-nanopi-neo-core2-device.patch"
 TARGET_NAME="001-arm64-dts-Add-sun50i-h5-nanopi-neo2-black-device.patch"
 
+# Only an absent optional patch should select DTS reconstruction. Network and
+# server errors must remain visible instead of masquerading as a missing patch.
+fetch_optional_patch() {
+    local url=$1 output=$2 status
+    if ! status=$(curl -L -s -S --retry 3 --connect-timeout 10 --max-time 60 -w '%{http_code}' "$url" -o "$output"); then
+        echo "[✗] Failed to download optional Armbian patch: $url" >&2
+        exit 1
+    fi
+    case "$status" in
+        200) return 0 ;;
+        404) rm -f "$output"; return 1 ;;
+        *) echo "[✗] Armbian patch request failed with HTTP $status: $url" >&2; exit 1 ;;
+    esac
+}
+
 # === Conversion Logic (AWK Script) ===
 cat << 'EOF' > $WORK_DIR/transform_patch.awk
 BEGIN {
@@ -192,10 +207,10 @@ if [ "$DO_KERNEL" -eq 1 ]; then
         
         # Attempt to download patch or fallback to DTS
         patch_ready=0
-        if curl -f -s -S "$patch_url" -o $WORK_DIR/raw.patch; then
+        if fetch_optional_patch "$patch_url" "$WORK_DIR/raw.patch"; then
             patch_ready=1
         else
-            echo "  [I] Patch not found, attempting to construct it from DTS ..."
+            echo "  [I] No standalone Armbian patch (HTTP 404); generating it from the board DTS ..."
             dts_url="${BASE_URL}/patch/kernel/archive/${ver_dir}/dt_64/sun50i-h5-nanopi-neo-core2.dts"
             if curl -f -s -S "$dts_url" -o $WORK_DIR/raw_core2.dts; then
                 kern_makefile_url="https://raw.githubusercontent.com/torvalds/linux/${KERN_VER_TAG}/arch/arm64/boot/dts/allwinner/Makefile"

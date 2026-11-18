@@ -108,3 +108,5 @@ pass 'NEO2 Black dynamically selects kernel and U-Boot versions without dry-run 
 
 bash "$root/tests/cpuinfo.sh"
 bash "$root/tests/r28s.sh"
+bash "$root/tests/host-tools.sh"
+bash "$root/tests/neo2-fetch.sh"

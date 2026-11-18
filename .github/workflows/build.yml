@@ -41,8 +41,15 @@ jobs:
           build-mount-path: ${{ github.workspace }}/work
           swap-size-mb: 1024
           temp-reserve-mb: 100
-          # Prebuilt host tools are pulled through Docker on the root filesystem.
-          root-reserve-mb: 8192
+          # Docker storage is mounted on the build volume below.
+          root-reserve-mb: 4096
+          remove-dotnet: true
+          remove-android: true
+          remove-haskell: true
+          remove-codeql: true
+          remove-docker-images: true
+      - name: Place Docker storage on build volume
+        run: bash ci/prepare-docker-storage.sh
       - name: Clone OpenWrt
         run: ./rexwrt clone
       - name: Install feeds
