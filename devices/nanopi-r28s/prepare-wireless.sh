@@ -75,6 +75,20 @@ awk '
   { print }
 ' "$file" > "$file.rexwrt"
 mv "$file.rexwrt" "$file"
+# Radiotap presence words and payload share the skb allocation. Starting at the
+# scalar it_present member incorrectly limits fortified copies to that field.
+file=$driver/aic8800_fdrv/rwnx_rx.c
+awk '
+  /^[[:space:]]*it_present = &rtap->it_present;[[:space:]]*$/ {
+    sub(/it_present = &rtap->it_present;/,
+        "it_present = (__le32 *)(skb->data + offsetof(struct ieee80211_radiotap_header, it_present));")
+  }
+  /^[[:space:]]*struct ieee80211_radiotap_he he;[[:space:]]*$/ {
+    sub(/he;/, "he = {0};")
+  }
+  { print }
+' "$file" > "$file.rexwrt"
+mv "$file.rexwrt" "$file"
 while IFS= read -r file; do
   awk -f "$script_dir/wireless-guards.awk" "$file" > "$file.rexwrt"
   mv "$file.rexwrt" "$file"

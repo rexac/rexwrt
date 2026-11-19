@@ -251,6 +251,12 @@ for supplied in 0 2 4; do
   mkdir -p "$source_root/debian/patches" "$source_root/src/SDIO/driver_fw/fw/aic8800D80" "$driver"
   : > "$source_root/debian/patches/series"
   : > "$driver/rwnx_main.c"
+  cat > "$driver/rwnx_rx.c" <<'C'
+it_present = &rtap->it_present;
+pos = (void *)(it_present + 1);
+struct ieee80211_radiotap_he he;
+memcpy(pos, &he, sizeof(he));
+C
   : > "${driver%/*}/Makefile"
   printf 'void cmd_mgr_task_process(struct work_struct *work)\n{\n}\n' > "$driver/rwnx_cmds.c"
   {
@@ -277,6 +283,9 @@ HEADER
     [[ $(grep -Fxc 'int rwnx_init_aic(struct rwnx_hw *rwnx_hw);' "$driver/rwnx_utils.h") == 1 ]] || fail 'missing or duplicate initialization prototype'
     grep -q '^static void cmd_mgr_task_process(' "$driver/rwnx_cmds.c" || fail 'workqueue callback is not private'
     [[ $(grep -Fxc 'subdir-ccflags-y += -Wno-error=missing-prototypes' "${driver%/*}/Makefile") == 1 ]] || fail 'vendor diagnostic scope or duplication'
+    grep -Fq 'it_present = (__le32 *)(skb->data + offsetof(struct ieee80211_radiotap_header, it_present));' "$driver/rwnx_rx.c" || fail 'radiotap cursor does not originate in skb allocation'
+    grep -Fq 'struct ieee80211_radiotap_he he = {0};' "$driver/rwnx_rx.c" || fail 'radiotap HE fields are not initialized'
+    grep -Fq 'memcpy(pos, &he, sizeof(he));' "$driver/rwnx_rx.c" || fail 'radiotap fortified copy was replaced'
   done
 done
 printf 'PASS: Radxa shared API declarations and private callback cover missing, partial and upstream-fixed sources\n'
