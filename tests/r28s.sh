@@ -164,6 +164,11 @@ done
 
 # A wireless API guard must change without changing a nested timer or VFS guard.
 cat > "$work/guards.c" <<'C'
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(7, 1, 0)
+mgmt->u.action.tdls_discover_resp.dialog_token = dialog_token;
+#else
+mgmt->u.action.u.tdls_discover_resp.dialog_token = dialog_token;
+#endif
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 17, 0)
 cfg80211_set_tx_power(wiphy, radio_idx);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 15, 0)
@@ -239,7 +244,7 @@ grep -q '#if CFG80211_VERSION < KERNEL_VERSION(6, 17, 0)' "$work/guards.out" || 
 grep -q '#if CFG80211_VERSION >= KERNEL_VERSION(6, 12, 0)' "$work/guards.out" || fail 'multiline wireless call argument guard unchanged'
 grep -q '#if CFG80211_VERSION >= KERNEL_VERSION(6, 4, 0)' "$work/guards.out" || fail 'sibling wireless call argument guard unchanged'
 grep -q '#if CFG80211_VERSION >= KERNEL_VERSION(7, 2, 0)' "$work/guards.out" || fail 'sibling wireless callback argument guard unchanged'
-[[ $(grep -c '#if CFG80211_VERSION >= KERNEL_VERSION(7, 1, 0)' "$work/guards.out") == 2 ]] || fail 'wireless device API body guard unchanged'
+[[ $(grep -c '#if CFG80211_VERSION >= KERNEL_VERSION(7, 1, 0)' "$work/guards.out") == 3 ]] || fail 'wireless device or management frame guard unchanged'
 grep -q '#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 16, 0)' "$work/guards.out" || fail 'preceding wireless statement changed timer guard'
 grep -q '#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0)' "$work/guards.out" || fail 'preceding wireless statement crossed preprocessor boundary'
 printf 'PASS: wireless and core-kernel version guards remain independent\n'
@@ -268,6 +273,7 @@ struct ieee80211_radiotap_he he;
 memcpy(pos, &he, sizeof(he));
 C
   cat > "$driver/aicwf_sdio.c" <<'C'
+#define CFG_USER_TEST (defined(CONFIG_POWER_LIMIT))
 static int aicwf_sdio_suspend(struct device *dev) { return suspend_device(dev); }
 static int aicwf_sdio_resume(struct device *dev) { return resume_device(dev); }
 static int unrelated_callback(struct device *dev) { return 0; }
@@ -313,6 +319,10 @@ HEADER
     done
     grep -Fq 'SET_SYSTEM_SLEEP_PM_OPS(aicwf_sdio_suspend, aicwf_sdio_resume)' "$driver/aicwf_sdio.c" || fail 'SDIO sleep callback registration changed'
     grep -q '^static int unrelated_callback(' "$driver/aicwf_sdio.c" || fail 'unrelated unused function diagnostics weakened'
+    grep -q '^#ifdef CONFIG_POWER_LIMIT$' "$driver/aicwf_sdio.c" || fail 'configuration predicate not evaluated at definition'
+    grep -q '^#define CFG_USER_TEST 1$' "$driver/aicwf_sdio.c" || fail 'enabled configuration predicate missing'
+    grep -q '^#define CFG_USER_TEST 0$' "$driver/aicwf_sdio.c" || fail 'disabled configuration predicate missing'
+    if grep -q '^#define .*defined(' "$driver/aicwf_sdio.c"; then fail 'macro still expands to defined'; fi
   done
 done
 printf 'PASS: Radxa shared API declarations and private callback cover missing, partial and upstream-fixed sources\n'

@@ -1,7 +1,7 @@
 # Use the wireless backport version only for guards controlling wireless APIs.
 # Timer, VFS, procfs and other core-kernel guards retain LINUX_VERSION_CODE.
 function wireless(text) {
-    return text ~ /(cfg80211|nl80211|wiphy|wireless_dev|ieee80211|IEEE80211_|NL80211_|wdev->|link_id|radio_idx)/
+    return text ~ /(cfg80211|nl80211|wiphy|wireless_dev|ieee80211|IEEE80211_|NL80211_|wdev->|mgmt->|link_id|radio_idx)/
 }
 {
     lines[NR]=$0

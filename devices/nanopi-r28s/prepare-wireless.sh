@@ -110,6 +110,22 @@ awk '
 ' "$file" > "$file.rexwrt"
 mv "$file.rexwrt" "$file"
 while IFS= read -r file; do
+  # Expand configuration predicates at definition time: generating the defined
+  # operator through macro expansion is not portable C preprocessing.
+  awk '
+    /^[[:space:]]*#define[[:space:]]+[[:alnum:]_]+[[:space:]]+\(defined\([[:alnum:]_]+\)\)[[:space:]]*$/ {
+      name=$2; option=$3
+      sub(/^\(defined\(/, "", option); sub(/\)\)$/, "", option)
+      print "#ifdef " option
+      print "#define " name " 1"
+      print "#else"
+      print "#define " name " 0"
+      print "#endif"
+      next
+    }
+    { print }
+  ' "$file" > "$file.rexwrt"
+  mv "$file.rexwrt" "$file"
   awk -f "$script_dir/wireless-guards.awk" "$file" > "$file.rexwrt"
   mv "$file.rexwrt" "$file"
 done < <(find "$driver" -type f \( -name '*.c' -o -name '*.h' \))
