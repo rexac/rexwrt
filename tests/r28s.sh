@@ -250,7 +250,17 @@ for supplied in 0 2 4; do
   driver=$source_root/src/SDIO/driver_fw/driver/aic8800/aic8800_fdrv
   mkdir -p "$source_root/debian/patches" "$source_root/src/SDIO/driver_fw/fw/aic8800D80" "$driver"
   : > "$source_root/debian/patches/series"
-  : > "$driver/rwnx_main.c"
+  cat > "$driver/rwnx_main.c" <<'C'
+switch (action_code) {
+case WLAN_TDLS_SETUP_RESPONSE:
+    if (active)
+        status_code = WLAN_STATUS_REQUEST_DECLINED;
+    /* fall-through */
+case WLAN_TDLS_SETUP_REQUEST:
+    send_mgmt(status_code);
+    break;
+}
+C
   cat > "$driver/rwnx_rx.c" <<'C'
 it_present = &rtap->it_present;
 pos = (void *)(it_present + 1);
@@ -286,6 +296,10 @@ HEADER
     grep -Fq 'it_present = (__le32 *)(skb->data + offsetof(struct ieee80211_radiotap_header, it_present));' "$driver/rwnx_rx.c" || fail 'radiotap cursor does not originate in skb allocation'
     grep -Fq 'struct ieee80211_radiotap_he he = {0};' "$driver/rwnx_rx.c" || fail 'radiotap HE fields are not initialized'
     grep -Fq 'memcpy(pos, &he, sizeof(he));' "$driver/rwnx_rx.c" || fail 'radiotap fortified copy was replaced'
+    awk '
+      /fallthrough;/ { marked++; if (getline <= 0 || $0 !~ /^case WLAN_TDLS_SETUP_REQUEST:/) exit 1 }
+      END { if (marked != 1) exit 1 }
+    ' "$driver/rwnx_main.c" || fail 'TDLS response does not explicitly fall through into request handling'
   done
 done
 printf 'PASS: Radxa shared API declarations and private callback cover missing, partial and upstream-fixed sources\n'

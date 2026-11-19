@@ -75,6 +75,16 @@ awk '
   { print }
 ' "$file" > "$file.rexwrt"
 mv "$file.rexwrt" "$file"
+# The TDLS response intentionally continues into the shared request sender.
+# Kernel builds require an attribute rather than a fall-through comment.
+file=$driver/aic8800_fdrv/rwnx_main.c
+awk '
+  /^[[:space:]]*\/\* fall-through \*\/[[:space:]]*$/ {
+    sub(/\/\* fall-through \*\//, "fallthrough;")
+  }
+  { print }
+' "$file" > "$file.rexwrt"
+mv "$file.rexwrt" "$file"
 # Radiotap presence words and payload share the skb allocation. Starting at the
 # scalar it_present member incorrectly limits fortified copies to that field.
 file=$driver/aic8800_fdrv/rwnx_rx.c
