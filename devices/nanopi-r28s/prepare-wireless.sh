@@ -85,6 +85,16 @@ awk '
   { print }
 ' "$file" > "$file.rexwrt"
 mv "$file.rexwrt" "$file"
+# SET_SYSTEM_SLEEP_PM_OPS drops callback references when CONFIG_PM_SLEEP is off.
+# Keep both callbacks available without weakening unused-function diagnostics.
+file=$driver/aic8800_fdrv/aicwf_sdio.c
+awk '
+  /^[[:space:]]*static[[:space:]]+int[[:space:]]+aicwf_sdio_(suspend|resume)[[:space:]]*\(/ {
+    sub(/int[[:space:]]+/, "int __maybe_unused ")
+  }
+  { print }
+' "$file" > "$file.rexwrt"
+mv "$file.rexwrt" "$file"
 # Radiotap presence words and payload share the skb allocation. Starting at the
 # scalar it_present member incorrectly limits fortified copies to that field.
 file=$driver/aic8800_fdrv/rwnx_rx.c

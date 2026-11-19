@@ -267,6 +267,14 @@ pos = (void *)(it_present + 1);
 struct ieee80211_radiotap_he he;
 memcpy(pos, &he, sizeof(he));
 C
+  cat > "$driver/aicwf_sdio.c" <<'C'
+static int aicwf_sdio_suspend(struct device *dev) { return suspend_device(dev); }
+static int aicwf_sdio_resume(struct device *dev) { return resume_device(dev); }
+static int unrelated_callback(struct device *dev) { return 0; }
+static const struct dev_pm_ops aicwf_sdio_pm_ops = {
+    SET_SYSTEM_SLEEP_PM_OPS(aicwf_sdio_suspend, aicwf_sdio_resume)
+};
+C
   : > "${driver%/*}/Makefile"
   printf 'void cmd_mgr_task_process(struct work_struct *work)\n{\n}\n' > "$driver/rwnx_cmds.c"
   {
@@ -300,6 +308,11 @@ HEADER
       /fallthrough;/ { marked++; if (getline <= 0 || $0 !~ /^case WLAN_TDLS_SETUP_REQUEST:/) exit 1 }
       END { if (marked != 1) exit 1 }
     ' "$driver/rwnx_main.c" || fail 'TDLS response does not explicitly fall through into request handling'
+    for callback in suspend resume; do
+      grep -q "^static int __maybe_unused aicwf_sdio_$callback(" "$driver/aicwf_sdio.c" || fail "optional SDIO $callback callback is not marked"
+    done
+    grep -Fq 'SET_SYSTEM_SLEEP_PM_OPS(aicwf_sdio_suspend, aicwf_sdio_resume)' "$driver/aicwf_sdio.c" || fail 'SDIO sleep callback registration changed'
+    grep -q '^static int unrelated_callback(' "$driver/aicwf_sdio.c" || fail 'unrelated unused function diagnostics weakened'
   done
 done
 printf 'PASS: Radxa shared API declarations and private callback cover missing, partial and upstream-fixed sources\n'
