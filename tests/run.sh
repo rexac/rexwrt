@@ -102,6 +102,37 @@ for stage in compile images; do
 done
 pass 'serial retries pass command-line verbosity and propagate build failures'
 
+# Device compilation must fail before the unrelated full package set starts.
+cat > "$work/bin/make" <<'MOCK'
+#!/bin/sh
+printf '%s\n' "$*" >> "$MAKE_LOG"
+if [ "$1" = "${FAIL_TARGET:-}" ]; then exit 42; fi
+MOCK
+for branch in main v25.12.6; do
+  : > "$work/preflight.log"
+  if MAKE_LOG="$work/preflight.log" FAIL_TARGET=package/kernel/aic8800-sdio/compile PATH="$work/bin:$PATH" \
+    "$root/rexwrt" preflight --device nanopi-r28s --branch "$branch" --source "$source_tree" --jobs 2 > "$work/error" 2>&1; then
+    fail 'device preflight failure ignored'
+  fi
+  expected=$'tools/compile -j2 V=s\ntoolchain/compile -j2 V=s\ntarget/compile -j2 V=s\npackage/kernel/aic8800-sdio/compile -j2 V=s'
+  [[ $(cat "$work/preflight.log") == "$expected" ]] || fail 'preflight compiled unrelated packages or hid diagnostics'
+done
+for device in nanopi-r28s x86-64; do
+  for stage in preflight compile; do
+    : > "$work/order.log"
+    MAKE_LOG="$work/order.log" PATH="$work/bin:$PATH" "$root/rexwrt" "$stage" \
+      --device "$device" --source "$source_tree" > "$work/error" 2>&1
+    awk '{print $1}' "$work/order.log" > "$work/targets"
+    expected=$'tools/compile\ntoolchain/compile\ntarget/compile'
+    if [[ "$device" == nanopi-r28s ]]; then
+      expected+=$'\npackage/kernel/aic8800-sdio/compile\npackage/boot/uboot-rexwrt-r28s/compile'
+    fi
+    if [[ "$stage" == compile ]]; then expected+=$'\npackage/compile\npackage/index\ndiffconfig'; fi
+    [[ $(cat "$work/targets") == "$expected" ]] || fail "$device $stage target order or isolation"
+  done
+done
+pass 'device preflight fails early with verbose logs; full builds check devices before other packages'
+
 # NEO2 Black selects Armbian sources from detected versions, not fixed patches.
 neo_tree=$work/neo
 mkdir -p "$neo_tree/include" "$neo_tree/target/linux/sunxi/image" "$neo_tree/package/boot/uboot-sunxi"

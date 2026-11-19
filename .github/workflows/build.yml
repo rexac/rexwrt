@@ -12,6 +12,13 @@ on:
         description: OpenWrt branch or stable tag
         default: main
         required: true
+      mode:
+        description: Full firmware or kernel and device packages only
+        type: choice
+        options:
+          - full
+          - preflight
+        default: full
 
 permissions:
   contents: write
@@ -24,12 +31,16 @@ jobs:
     env:
       DEVICE: ${{ github.event.client_payload.device || inputs.device }}
       BRANCH: ${{ github.event.client_payload.branch || inputs.branch }}
+      BUILD_MODE: ${{ github.event.client_payload.mode || inputs.mode || 'full' }}
       OPENWRTROOT: ${{ github.workspace }}/work/openwrt
+      CCACHE_MAXSIZE: 1G
+      CCACHE_COMPILERCHECK: content
       TZ: Asia/Shanghai
     steps:
       - uses: actions/checkout@v6
       - name: Validate build request and project
         run: |
+          case "$BUILD_MODE" in full|preflight) ;; *) echo 'Invalid build mode' >&2; exit 1 ;; esac
           ./rexwrt plan
           ./rexwrt check
       - name: Install build dependencies
@@ -56,9 +67,22 @@ jobs:
         run: ./rexwrt feeds
       - name: Configure firmware
         run: ./rexwrt configure
+      - name: Restore compiler cache
+        id: ccache_restore
+        continue-on-error: true
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ env.OPENWRTROOT }}/.ccache
+          key: ccache-v1-${{ runner.os }}-${{ env.DEVICE }}-${{ env.BRANCH }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            ccache-v1-${{ runner.os }}-${{ env.DEVICE }}-${{ env.BRANCH }}-
+      - name: Compile kernel and device packages first
+        run: ./rexwrt preflight
       - name: Download sources
+        if: env.BUILD_MODE == 'full'
         run: ./rexwrt download
       - name: Compile firmware
+        if: env.BUILD_MODE == 'full'
         id: compile
         continue-on-error: true
         run: ./rexwrt compile
@@ -78,6 +102,14 @@ jobs:
         env:
           V: s
         run: ./rexwrt images --jobs 1
+      # Preserve useful compiler results even when a later compilation fails.
+      - name: Save compiler cache
+        if: ${{ !cancelled() && steps.ccache_restore.outcome == 'success' }}
+        continue-on-error: true
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ env.OPENWRTROOT }}/.ccache
+          key: ${{ steps.ccache_restore.outputs.cache-primary-key }}
       - name: Prepare release
         if: env.FIRMWARE != ''
         id: release

@@ -14,6 +14,7 @@ Commands:
   adapt       Apply only the selected device's support (--dry-run to preview)
   configure   Load seeds, overlay, device support and common customizations
   download    Download build dependencies
+  preflight   Compile kernel and device packages before the full package set
   compile     Compile toolchain, target and packages
   images      Install packages and collect firmware with SHA-256 checksums
   build       Run clone -> feeds -> configure -> download -> compile -> images
@@ -66,7 +67,7 @@ case "$command" in
     if (( json )); then list_devices | jq -R . | jq -sc .; else list_devices; fi
     exit 0 ;;
   check) exec bash "$REXWRT_ROOT/tests/run.sh" ;;
-  plan|clone|feeds|adapt|configure|download|compile|images|build) ;;
+  plan|clone|feeds|adapt|configure|download|preflight|compile|images|build) ;;
   *) die "Unknown command: $command (see ./rexwrt help)" ;;
 esac
 [[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || die '--jobs must be a positive integer'
@@ -139,14 +140,27 @@ download_source() {
 }
 compile_source() {
   linux_only; require_source
+  local scope=${1:-full}
   # OpenWrt reads V only as a make command-line variable, not from the environment.
   (
     cd "$OPENWRTROOT"
     make tools/compile -j"$JOBS" V="${V:-}"
-    for target in toolchain/compile target/compile package/compile package/index; do
+    for target in toolchain/compile target/compile; do
       make "$target" -j"$JOBS" V="${V:-}"
     done
-    make diffconfig V="${V:-}"
+    # Surface device failures before unrelated Go and container packages start.
+    # Individual package targets resolve their dependencies through OpenWrt.
+    if [[ "$DEVICE" == nanopi-r28s ]]; then
+      for target in package/kernel/aic8800-sdio/compile package/boot/uboot-rexwrt-r28s/compile; do
+        make "$target" -j"$JOBS" V="${V:-}"
+      done
+    fi
+    if [[ "$scope" == full ]]; then
+      for target in package/compile package/index; do
+        make "$target" -j"$JOBS" V="${V:-}"
+      done
+      make diffconfig V="${V:-}"
+    fi
   )
 }
 generate_images() {
@@ -166,6 +180,7 @@ case "$command" in
   adapt) adapt_device ;;
   configure) configure_source ;;
   download) download_source ;;
+  preflight) V=${V:-s} compile_source preflight ;;
   compile) compile_source ;;
   images) generate_images ;;
   build) linux_only; clone_source; update_feeds; configure_source; download_source; compile_source; generate_images ;;
