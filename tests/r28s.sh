@@ -185,6 +185,49 @@ int cfg80211_callback(struct wiphy *wiphy,
 struct net_device *dev,
 #endif
 int value);
+cfg80211_rx_unexpected_4addr_frame(dev,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 17, 0)
+addr, GFP_ATOMIC);
+#else
+addr, -1, GFP_ATOMIC);
+#endif
+cfg80211_rx_mgmt(dev,
+channel,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
+link,
+#endif
+data);
+cfg80211_optional_args(dev,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
+first,
+#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
+second,
+#endif
+data);
+int wireless_callback(struct wiphy *wiphy,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(7, 1, 0)
+struct wireless_dev *wdev,
+#else
+struct net_device *dev,
+#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(7, 2, 0)
+int argument,
+#endif
+int value);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(7, 1, 0)
+struct net_device *dev = wdev->netdev;
+#endif
+cfg80211_complete(dev);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 16, 0)
+timer_delete_sync(&timer);
+#endif
+cfg80211_complete(dev);
+#ifdef CONFIG_TIMER_HELPER
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0)
+timer_shutdown_sync(&timer);
+#endif
+#endif
 C
 awk -f "$project/devices/nanopi-r28s/wireless-guards.awk" "$work/guards.c" > "$work/guards.out"
 grep -q '#if CFG80211_VERSION >= KERNEL_VERSION(6, 17, 0)' "$work/guards.out" || fail 'wireless version guard'
@@ -192,6 +235,13 @@ grep -q '#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 15, 0)' "$work/guards.out" 
 grep -q '#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0)' "$work/guards.out" || fail 'VFS version guard changed'
 grep -q '#if CFG80211_VERSION >= KERNEL_VERSION(6, 14, 0)' "$work/guards.out" || fail 'enclosing wireless guard unchanged'
 grep -q '#if CFG80211_VERSION >= KERNEL_VERSION(6, 10, 0)' "$work/guards.out" || fail 'optional wireless callback argument guard unchanged'
+grep -q '#if CFG80211_VERSION < KERNEL_VERSION(6, 17, 0)' "$work/guards.out" || fail 'optional wireless call argument guard unchanged'
+grep -q '#if CFG80211_VERSION >= KERNEL_VERSION(6, 12, 0)' "$work/guards.out" || fail 'multiline wireless call argument guard unchanged'
+grep -q '#if CFG80211_VERSION >= KERNEL_VERSION(6, 4, 0)' "$work/guards.out" || fail 'sibling wireless call argument guard unchanged'
+grep -q '#if CFG80211_VERSION >= KERNEL_VERSION(7, 2, 0)' "$work/guards.out" || fail 'sibling wireless callback argument guard unchanged'
+[[ $(grep -c '#if CFG80211_VERSION >= KERNEL_VERSION(7, 1, 0)' "$work/guards.out") == 2 ]] || fail 'wireless device API body guard unchanged'
+grep -q '#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 16, 0)' "$work/guards.out" || fail 'preceding wireless statement changed timer guard'
+grep -q '#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0)' "$work/guards.out" || fail 'preceding wireless statement crossed preprocessor boundary'
 printf 'PASS: wireless and core-kernel version guards remain independent\n'
 
 # Keep shared prototypes unique when upstream provides none, some or all of them.

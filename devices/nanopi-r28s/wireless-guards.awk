@@ -1,7 +1,7 @@
 # Use the wireless backport version only for guards controlling wireless APIs.
 # Timer, VFS, procfs and other core-kernel guards retain LINUX_VERSION_CODE.
 function wireless(text) {
-    return text ~ /(cfg80211|nl80211|wiphy|wireless_dev|ieee80211|link_id|radio_idx)/
+    return text ~ /(cfg80211|nl80211|wiphy|wireless_dev|ieee80211|IEEE80211_|NL80211_|wdev->|link_id|radio_idx)/
 }
 {
     lines[NR]=$0
@@ -14,14 +14,15 @@ function wireless(text) {
         # Nested wireless branches also determine their enclosing API guard.
         text=""
         for (i=first+1; i<NR; i++) text=text "\n" lines[i]
-        # Some optional callback arguments name only net_device; inspect the
-        # immediately preceding signature, without classifying its whole body.
+        # Optional call and callback arguments may contain no wireless names.
+        # Inspect their unfinished prefix across sibling argument guards,
+        # stopping at a completed statement or block so a preceding wireless
+        # call cannot classify an unrelated timer/VFS guard.
         signature=""
-        if (text ~ /struct net_device[[:space:]]*\*/) {
-            for (i=first-1; i>0 && i>=first-5; i--) {
-                if (lines[i] ~ /[{};]/) break
-                signature=lines[i] "\n" signature
-            }
+        for (i=first-1; i>0; i--) {
+            if (lines[i] ~ /^[[:space:]]*#/) continue
+            if (lines[i] ~ /[{};]/) break
+            signature=lines[i] "\n" signature
         }
         if (wireless(text) || wireless(signature)) {
             gsub(/LINUX_VERSION_CODE/, "CFG80211_VERSION", lines[first])
