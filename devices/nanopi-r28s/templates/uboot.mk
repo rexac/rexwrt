@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=uboot-rexwrt-r28s
-PKG_VERSION:=@BOOT@
+PKG_VERSION:=0~@BOOT@
 PKG_RELEASE:=1
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/u-boot/u-boot.git

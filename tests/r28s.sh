@@ -154,6 +154,13 @@ MAKE
   printf '\ninspect:\n\t@echo $(CFG80211_VERSION)\n' >> "$work/version.mk"
   version=$(make --no-print-directory -s -f "$work/version.mk" TOPDIR="$tree" inspect)
   [[ "$version" == "$((7*65536+12*256+1))" ]] || fail "wireless metadata version: $version"
+  # APK requires a numeric version prefix; retain the exact Git revision after ~.
+  for recipe in "$tree/package/kernel/aic8800-sdio/Makefile" "$tree/package/boot/uboot-rexwrt-r28s/Makefile"; do
+    [[ -f "$recipe" ]] || continue
+    package_version=$(sed -n 's/^PKG_VERSION:=//p' "$recipe")
+    source_version=$(sed -n 's/^PKG_SOURCE_VERSION:=//p' "$recipe")
+    [[ "$package_version" == "0~$source_version" && "$source_version" == "$sha" ]] || fail 'Git package version loses APK compatibility or source revision'
+  done
   grep -q 'kmod-aic8800-sdio' "$tree/target/linux/rockchip/image/armv8.mk" || fail 'wireless package selection'
   manifest "$tree" > "$work/before"
   "$project/rexwrt" adapt --device nanopi-r28s --source "$tree" > "$work/log"

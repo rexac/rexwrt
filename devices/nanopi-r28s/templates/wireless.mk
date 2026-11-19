@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=aic8800-sdio
-PKG_VERSION:=@AIC@
-PKG_RELEASE:=10
+PKG_VERSION:=0~@AIC@
+PKG_RELEASE:=11
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/radxa-pkg/aic8800.git
 PKG_SOURCE_VERSION:=@AIC@
