@@ -85,16 +85,6 @@ awk '
   { print }
 ' "$file" > "$file.rexwrt"
 mv "$file.rexwrt" "$file"
-# SET_SYSTEM_SLEEP_PM_OPS drops callback references when CONFIG_PM_SLEEP is off.
-# Keep both callbacks available without weakening unused-function diagnostics.
-file=$driver/aic8800_fdrv/aicwf_sdio.c
-awk '
-  /^[[:space:]]*static[[:space:]]+int[[:space:]]+aicwf_sdio_(suspend|resume)[[:space:]]*\(/ {
-    sub(/int[[:space:]]+/, "int __maybe_unused ")
-  }
-  { print }
-' "$file" > "$file.rexwrt"
-mv "$file.rexwrt" "$file"
 # Radiotap presence words and payload share the skb allocation. Starting at the
 # scalar it_present member incorrectly limits fortified copies to that field.
 file=$driver/aic8800_fdrv/rwnx_rx.c
@@ -113,6 +103,10 @@ while IFS= read -r file; do
   # Expand configuration predicates at definition time: generating the defined
   # operator through macro expansion is not portable C preprocessing.
   awk '
+    # Both the BSP and Wi-Fi modules use optional system sleep callbacks.
+    /^[[:space:]]*static[[:space:]]+int[[:space:]]+(aicwf|aicbsp)_sdio_(suspend|resume)[[:space:]]*\(/ {
+      sub(/int[[:space:]]+/, "int __maybe_unused ")
+    }
     /^[[:space:]]*#define[[:space:]]+[[:alnum:]_]+[[:space:]]+\(defined\([[:alnum:]_]+\)\)[[:space:]]*$/ {
       name=$2; option=$3
       sub(/^\(defined\(/, "", option); sub(/\)\)$/, "", option)

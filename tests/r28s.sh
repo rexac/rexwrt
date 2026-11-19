@@ -276,6 +276,8 @@ C
 #define CFG_USER_TEST (defined(CONFIG_POWER_LIMIT))
 static int aicwf_sdio_suspend(struct device *dev) { return suspend_device(dev); }
 static int aicwf_sdio_resume(struct device *dev) { return resume_device(dev); }
+static int aicbsp_sdio_suspend(struct device *dev) { return suspend_device(dev); }
+static int aicbsp_sdio_resume(struct device *dev) { return resume_device(dev); }
 static int unrelated_callback(struct device *dev) { return 0; }
 static const struct dev_pm_ops aicwf_sdio_pm_ops = {
     SET_SYSTEM_SLEEP_PM_OPS(aicwf_sdio_suspend, aicwf_sdio_resume)
@@ -316,6 +318,7 @@ HEADER
     ' "$driver/rwnx_main.c" || fail 'TDLS response does not explicitly fall through into request handling'
     for callback in suspend resume; do
       grep -q "^static int __maybe_unused aicwf_sdio_$callback(" "$driver/aicwf_sdio.c" || fail "optional SDIO $callback callback is not marked"
+      grep -q "^static int __maybe_unused aicbsp_sdio_$callback(" "$driver/aicwf_sdio.c" || fail "optional BSP SDIO $callback callback is not marked"
     done
     grep -Fq 'SET_SYSTEM_SLEEP_PM_OPS(aicwf_sdio_suspend, aicwf_sdio_resume)' "$driver/aicwf_sdio.c" || fail 'SDIO sleep callback registration changed'
     grep -q '^static int unrelated_callback(' "$driver/aicwf_sdio.c" || fail 'unrelated unused function diagnostics weakened'
