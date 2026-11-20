@@ -22,6 +22,19 @@ for pair in nanopi-neo2-black:sunxi/cortexa53 nanopi-r28s:rockchip/armv8 x86-64:
   grep -Fx "Target: $target" "$work/plan" >/dev/null || fail "$device target"
 done
 pass 'device discovery and target resolution'
+for device in nanopi-r28s nanopi-neo2-black x86-64; do
+  bash -c 'source "$1/scripts/lib/common.sh"; DEVICE=$2; load_device; seed_config' _ "$root" "$device" > "$work/seed"
+  for package in luci-app-hd-idle luci-app-mosdns luci-app-openlist luci-app-podman podman; do
+    if [[ "$device" == nanopi-r28s ]]; then
+      grep -Fxq "# CONFIG_PACKAGE_$package is not set" "$work/seed" || fail "R28S exclusion missing: $package"
+      if grep -q "^CONFIG_PACKAGE_$package=" "$work/seed"; then fail "conflicting R28S selection: $package"; fi
+    else
+      grep -Fxq "CONFIG_PACKAGE_$package=y" "$work/seed" || fail "$device lost shared package: $package"
+    fi
+  done
+  grep -Fxq 'CONFIG_PACKAGE_luci-app-nikki=y' "$work/seed" || fail "$device lost unrelated shared package"
+done
+pass 'R28S package exclusions override defaults while other devices retain shared selections'
 if "$root/rexwrt" plan --device ../../outside > "$work/error" 2>&1; then fail 'unsafe device accepted'; fi
 if "$root/rexwrt" plan --branch ../../outside > "$work/error" 2>&1; then fail 'unsafe branch accepted'; fi
 if "$root/rexwrt" plan --jobs 0 > "$work/error" 2>&1; then fail 'zero jobs accepted'; fi

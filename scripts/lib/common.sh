@@ -6,6 +6,16 @@ export REXWRT_ROOT
 die() { printf 'rexwrt: %s\n' "$*" >&2; exit 1; }
 log() { printf '\n[rexwrt] %s\n' "$*"; }
 require_command() { command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"; }
+seed_config() {
+  # Device settings override shared defaults without duplicate Kconfig symbols.
+  awk '
+    { lines[NR]=$0; key="" }
+    /^CONFIG_[[:alnum:]_-]+=/ { key=$0; sub(/=.*/, "", key) }
+    /^# CONFIG_[[:alnum:]_-]+ is not set$/ { key=$2 }
+    { if (key != "") { symbols[NR]=key; last[key]=NR } }
+    END { for (i=1; i<=NR; i++) if (!(i in symbols) || last[symbols[i]]==i) print lines[i] }
+  ' "$REXWRT_ROOT/config/common.seed" "$DEVICE_DIR/config.seed"
+}
 list_devices() {
   local config
   for config in "$REXWRT_ROOT"/devices/*/config.seed; do

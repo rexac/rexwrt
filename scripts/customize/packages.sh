@@ -37,6 +37,7 @@ if [[ ! -d "$OPENWRTROOT/feeds/luci/applications/luci-app-irqbalance" ]]; then
   clone_and_extract https://github.com/openwrt/luci applications/luci-app-irqbalance
 fi
 # Remove duplicate feed recipes before supplying the customized MosDNS sources.
+if [[ "$DEVICE" != nanopi-r28s ]]; then
 find "$OPENWRTROOT/feeds" -type f -name Makefile \( -path '*/v2ray-geodata/*' -o -path '*/mosdns/*' \) -delete
 git clone --depth 1 --branch v5 https://github.com/sbwml/luci-app-mosdns mosdns
 git clone --depth 1 https://github.com/sbwml/v2ray-geodata
@@ -45,6 +46,7 @@ if [[ ! -d "$OPENWRTROOT/feeds/luci/applications/luci-app-openlist" ]]; then
   clone_and_extract https://github.com/openwrt/luci applications/luci-app-openlist
 fi
 git clone --depth 1 https://github.com/Zerogiven-OpenWRT-Packages/luci-app-podman
+fi
 if [[ ! -d "$OPENWRTROOT/feeds/luci/applications/luci-app-zerotier" ]]; then
   rm -rf "$OPENWRTROOT/feeds/packages/net/zerotier"
   clone_and_extract https://github.com/immortalwrt/packages net/zerotier

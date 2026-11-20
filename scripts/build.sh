@@ -107,7 +107,7 @@ configure_source() {
   linux_only
   require_source
   [[ ! -f "$OPENWRTROOT/.rexwrt-configured" ]] || die 'This checkout is already configured; use a fresh checkout to reconfigure'
-  { cat "$DEVICE_DIR/config.seed"; printf '\n'; cat "$REXWRT_ROOT/config/common.seed"; } > "$OPENWRTROOT/.config"
+  seed_config > "$OPENWRTROOT/.config"
   mkdir -p "$OPENWRTROOT/files"
   cp -R "$REXWRT_ROOT/overlay/." "$OPENWRTROOT/files/"
   # Device support is independent of package customization and always runs first.

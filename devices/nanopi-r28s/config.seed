@@ -10,3 +10,10 @@ CONFIG_TARGET_EXT4_JOURNAL=y
 CONFIG_TARGET_ROOTFS_SQUASHFS=y
 
 CONFIG_PACKAGE_autocore-arm=y
+
+# Omit storage services and containers from this device.
+# CONFIG_PACKAGE_luci-app-hd-idle is not set
+# CONFIG_PACKAGE_luci-app-mosdns is not set
+# CONFIG_PACKAGE_luci-app-openlist is not set
+# CONFIG_PACKAGE_luci-app-podman is not set
+# CONFIG_PACKAGE_podman is not set
