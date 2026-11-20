@@ -22,7 +22,7 @@ EOF
 rm -rf /tmp/luci-modulecache
 rm -rf /tmp/luci-indexcache
 
-# Keep imported router settings intact on first boot.
+# Keep device-specific network and DHCP defaults intact.
 if [ ! -f /etc/rexwrt/preserve-network ]; then
 # Set default network preferences
 uci batch <<EOF

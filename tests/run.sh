@@ -11,6 +11,7 @@ while IFS= read -r -d '' file; do bash -n "$file"; done < <(
 )
 bash -n "$root/rexwrt"
 sh -n "$root/overlay/etc/uci-defaults/99-init-settings"
+sh -n "$root/devices/nanopi-r28s/overlay/etc/uci-defaults/90-r28s-network"
 pass 'active shell scripts parse'
 
 expected=$'nanopi-neo2-black\nnanopi-r28s\nx86-64'

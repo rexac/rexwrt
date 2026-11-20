@@ -1,0 +1,239 @@
+#!/bin/sh
+
+# Preserve settings restored from an earlier RexWrt R28S installation.
+if [ "$(uci -q get network.globals.rexwrt_r28s_defaults)" = 1 ] ||
+   [ "$(uci -q get network.doorlink)" = interface ]; then
+  exit 0
+fi
+
+radio_path=$(uci -q get wireless.radio0.path)
+radio_path=${radio_path:-platform/ffc10000.mmc/mmc_host/mmc3/mmc3:390b/mmc3:390b:1}
+
+state=$(mktemp -d) || exit 1
+trap 'rm -rf "$state"' EXIT
+
+# Replace the stock topology and rules together so no stale sections remain.
+for package in network wireless firewall dhcp; do
+  [ -f "/etc/config/$package" ] || touch "/etc/config/$package" || exit 1
+  sections=$(uci -t "$state" -X show "$package") || exit 1
+  for section in $(printf '%s\n' "$sections" | awk -F= '$1 ~ /^[^.]+[.][^.]+$/ {print $1}'); do
+    uci -t "$state" delete "$section" || exit 1
+  done
+done
+
+# UCI batch may report individual failures on stderr without a failing exit code.
+uci -t "$state" batch 2>"$state/errors" <<'EOF' || exit 1
+
+# Network defaults
+set network.loopback=interface
+set network.loopback.device='lo'
+set network.loopback.proto='static'
+add_list network.loopback.ipaddr='127.0.0.1/8'
+set network.globals=globals
+set network.globals.rexwrt_r28s_defaults='1'
+set network.globals.packet_steering='1'
+set network.br_lan=device
+set network.br_lan.name='br-lan'
+set network.br_lan.type='bridge'
+set network.lan=interface
+set network.lan.device='br-lan'
+set network.lan.proto='static'
+add_list network.lan.ipaddr='192.168.5.1/24'
+set network.lan.ip6assign='60'
+set network.br_doorlink=device
+set network.br_doorlink.type='bridge'
+set network.br_doorlink.name='br-doorlink'
+add_list network.br_doorlink.ports='eth0'
+add_list network.br_doorlink.ports='eth1'
+set network.doorlink=interface
+set network.doorlink.proto='static'
+set network.doorlink.device='br-doorlink'
+set network.doorlink.ipaddr='172.16.0.201'
+set network.doorlink.netmask='255.255.0.0'
+set network.doorlink.ip6assign='0'
+set network.docker_bridge=device
+set network.docker_bridge.type='bridge'
+set network.docker_bridge.name='docker0'
+
+# Wireless defaults
+set wireless.radio0=wifi-device
+set wireless.radio0.type='mac80211'
+set wireless.radio0.band='2g'
+set wireless.radio0.channel='1'
+set wireless.radio0.htmode='HE20'
+set wireless.radio0.country='CN'
+set wireless.default_radio0=wifi-iface
+set wireless.default_radio0.device='radio0'
+set wireless.default_radio0.network='lan'
+set wireless.default_radio0.mode='ap'
+set wireless.default_radio0.encryption='psk2'
+set wireless.default_radio0.key='abcd1234'
+set wireless.default_radio0.ssid='DOORLINK'
+
+# Firewall defaults
+set firewall.defaults=defaults
+set firewall.defaults.input='ACCEPT'
+set firewall.defaults.output='ACCEPT'
+set firewall.defaults.forward='ACCEPT'
+set firewall.defaults.flow_offloading='1'
+set firewall.defaults.synflood_protect='1'
+set firewall.lan=zone
+set firewall.lan.name='lan'
+set firewall.lan.input='ACCEPT'
+set firewall.lan.output='ACCEPT'
+set firewall.lan.forward='ACCEPT'
+add_list firewall.lan.network='lan'
+set firewall.wan=zone
+set firewall.wan.name='wan'
+set firewall.wan.input='REJECT'
+set firewall.wan.output='ACCEPT'
+set firewall.wan.forward='ACCEPT'
+set firewall.wan.fullcone4='1'
+set firewall.wan.fullcone6='0'
+set firewall.wan.masq='1'
+set firewall.wan.mtu_fix='1'
+add_list firewall.wan.network='doorlink'
+set firewall.lan_to_wan=forwarding
+set firewall.lan_to_wan.src='lan'
+set firewall.lan_to_wan.dest='wan'
+set firewall.allow_dhcp_renew=rule
+set firewall.allow_dhcp_renew.name='Allow-DHCP-Renew'
+set firewall.allow_dhcp_renew.src='wan'
+set firewall.allow_dhcp_renew.proto='udp'
+set firewall.allow_dhcp_renew.dest_port='68'
+set firewall.allow_dhcp_renew.target='ACCEPT'
+set firewall.allow_dhcp_renew.family='ipv4'
+set firewall.allow_ping=rule
+set firewall.allow_ping.name='Allow-Ping'
+set firewall.allow_ping.src='wan'
+set firewall.allow_ping.proto='icmp'
+set firewall.allow_ping.icmp_type='echo-request'
+set firewall.allow_ping.family='ipv4'
+set firewall.allow_ping.target='ACCEPT'
+set firewall.allow_igmp=rule
+set firewall.allow_igmp.name='Allow-IGMP'
+set firewall.allow_igmp.src='wan'
+set firewall.allow_igmp.proto='igmp'
+set firewall.allow_igmp.family='ipv4'
+set firewall.allow_igmp.target='ACCEPT'
+set firewall.allow_dhcpv6=rule
+set firewall.allow_dhcpv6.name='Allow-DHCPv6'
+set firewall.allow_dhcpv6.src='wan'
+set firewall.allow_dhcpv6.proto='udp'
+set firewall.allow_dhcpv6.dest_port='546'
+set firewall.allow_dhcpv6.family='ipv6'
+set firewall.allow_dhcpv6.target='ACCEPT'
+set firewall.allow_mld=rule
+set firewall.allow_mld.name='Allow-MLD'
+set firewall.allow_mld.src='wan'
+set firewall.allow_mld.proto='icmp'
+set firewall.allow_mld.src_ip='fe80::/10'
+add_list firewall.allow_mld.icmp_type='130/0'
+add_list firewall.allow_mld.icmp_type='131/0'
+add_list firewall.allow_mld.icmp_type='132/0'
+add_list firewall.allow_mld.icmp_type='143/0'
+set firewall.allow_mld.family='ipv6'
+set firewall.allow_mld.target='ACCEPT'
+set firewall.allow_icmpv6_input=rule
+set firewall.allow_icmpv6_input.name='Allow-ICMPv6-Input'
+set firewall.allow_icmpv6_input.src='wan'
+set firewall.allow_icmpv6_input.proto='icmp'
+add_list firewall.allow_icmpv6_input.icmp_type='echo-request'
+add_list firewall.allow_icmpv6_input.icmp_type='echo-reply'
+add_list firewall.allow_icmpv6_input.icmp_type='destination-unreachable'
+add_list firewall.allow_icmpv6_input.icmp_type='packet-too-big'
+add_list firewall.allow_icmpv6_input.icmp_type='time-exceeded'
+add_list firewall.allow_icmpv6_input.icmp_type='bad-header'
+add_list firewall.allow_icmpv6_input.icmp_type='unknown-header-type'
+add_list firewall.allow_icmpv6_input.icmp_type='router-solicitation'
+add_list firewall.allow_icmpv6_input.icmp_type='neighbour-solicitation'
+add_list firewall.allow_icmpv6_input.icmp_type='router-advertisement'
+add_list firewall.allow_icmpv6_input.icmp_type='neighbour-advertisement'
+set firewall.allow_icmpv6_input.limit='1000/sec'
+set firewall.allow_icmpv6_input.family='ipv6'
+set firewall.allow_icmpv6_input.target='ACCEPT'
+set firewall.allow_icmpv6_forward=rule
+set firewall.allow_icmpv6_forward.name='Allow-ICMPv6-Forward'
+set firewall.allow_icmpv6_forward.src='wan'
+set firewall.allow_icmpv6_forward.dest='*'
+set firewall.allow_icmpv6_forward.proto='icmp'
+add_list firewall.allow_icmpv6_forward.icmp_type='echo-request'
+add_list firewall.allow_icmpv6_forward.icmp_type='echo-reply'
+add_list firewall.allow_icmpv6_forward.icmp_type='destination-unreachable'
+add_list firewall.allow_icmpv6_forward.icmp_type='packet-too-big'
+add_list firewall.allow_icmpv6_forward.icmp_type='time-exceeded'
+add_list firewall.allow_icmpv6_forward.icmp_type='bad-header'
+add_list firewall.allow_icmpv6_forward.icmp_type='unknown-header-type'
+set firewall.allow_icmpv6_forward.limit='1000/sec'
+set firewall.allow_icmpv6_forward.family='ipv6'
+set firewall.allow_icmpv6_forward.target='ACCEPT'
+set firewall.allow_ipsec_esp=rule
+set firewall.allow_ipsec_esp.name='Allow-IPSec-ESP'
+set firewall.allow_ipsec_esp.src='wan'
+set firewall.allow_ipsec_esp.dest='lan'
+set firewall.allow_ipsec_esp.proto='esp'
+set firewall.allow_ipsec_esp.target='ACCEPT'
+set firewall.allow_isakmp=rule
+set firewall.allow_isakmp.name='Allow-ISAKMP'
+set firewall.allow_isakmp.src='wan'
+set firewall.allow_isakmp.dest='lan'
+set firewall.allow_isakmp.dest_port='500'
+set firewall.allow_isakmp.proto='udp'
+set firewall.allow_isakmp.target='ACCEPT'
+
+# Dhcp defaults
+set dhcp.dnsmasq=dnsmasq
+set dhcp.dnsmasq.domainneeded='1'
+set dhcp.dnsmasq.boguspriv='1'
+set dhcp.dnsmasq.filterwin2k='0'
+set dhcp.dnsmasq.localise_queries='1'
+set dhcp.dnsmasq.rebind_protection='1'
+set dhcp.dnsmasq.rebind_localhost='1'
+set dhcp.dnsmasq.local='/lan/'
+set dhcp.dnsmasq.domain='lan'
+set dhcp.dnsmasq.expandhosts='1'
+set dhcp.dnsmasq.nonegcache='0'
+set dhcp.dnsmasq.cachesize='1000'
+set dhcp.dnsmasq.authoritative='1'
+set dhcp.dnsmasq.readethers='1'
+set dhcp.dnsmasq.leasefile='/tmp/dhcp.leases'
+set dhcp.dnsmasq.resolvfile='/tmp/resolv.conf.d/resolv.conf.auto'
+set dhcp.dnsmasq.nonwildcard='1'
+set dhcp.dnsmasq.localservice='1'
+set dhcp.dnsmasq.ednspacket_max='1232'
+set dhcp.dnsmasq.filter_aaaa='0'
+set dhcp.dnsmasq.filter_a='0'
+set dhcp.lan=dhcp
+set dhcp.lan.interface='lan'
+set dhcp.lan.start='100'
+set dhcp.lan.limit='150'
+set dhcp.lan.leasetime='12h'
+set dhcp.lan.dhcpv4='server'
+set dhcp.lan.dhcpv6='server'
+set dhcp.lan.ra='server'
+set dhcp.lan.ra_slaac='1'
+add_list dhcp.lan.ra_flags='managed-config'
+add_list dhcp.lan.ra_flags='other-config'
+set dhcp.wan=dhcp
+set dhcp.wan.interface='wan'
+set dhcp.wan.ignore='1'
+set dhcp.odhcpd=odhcpd
+set dhcp.odhcpd.maindhcp='0'
+set dhcp.odhcpd.leasefile='/tmp/odhcpd.leases'
+set dhcp.odhcpd.leasetrigger='/usr/sbin/odhcpd-update'
+set dhcp.odhcpd.loglevel='4'
+set dhcp.odhcpd.piodir='/tmp/odhcpd-piodir'
+set dhcp.odhcpd.hostsdir='/tmp/hosts'
+EOF
+if [ -s "$state/errors" ]; then
+  cat "$state/errors" >&2
+  exit 1
+fi
+uci -t "$state" set "wireless.radio0.path=$radio_path" || exit 1
+
+# Commit network last so its marker is set only after the other packages succeed.
+for package in wireless firewall dhcp network; do
+  uci -t "$state" commit "$package" || exit 1
+done
+
+exit 0

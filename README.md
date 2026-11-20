@@ -45,8 +45,9 @@ Each fresh build resolves current Linux, U-Boot, Armbian and Radxa branches;
 U-Boot prefers official `main`, then official `next` when R28S support is missing.
 Wireless integration follows Armbian's AIC8800D80 SDIO/UART setup.
 Resolved revisions are embedded in the firmware and copied beside release images.
-R28S includes its own network, wireless, firewall, and DHCP defaults.
-Connect over Wi-Fi (default key: `abcd1234`) to reach `192.168.5.1`;
+R28S applies its network, wireless, firewall, and DHCP defaults through
+`90-r28s-network` on first boot.
+Connect to `DOORLINK` (default key: `abcd1234`) to reach `192.168.5.1`;
 both Ethernet ports belong to the `doorlink` bridge. Flash without keeping
 settings to use these defaults on an existing installation.
 
