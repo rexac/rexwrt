@@ -136,7 +136,7 @@ jobs:
         id: release
         run: |
           echo "tag=$(date +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
-          printf 'Default IP: 10.0.0.1\n' > release.txt
+          printf 'Default LAN IP: 192.168.5.1 on NanoPi R28S; 10.0.0.1 on other devices.\n' > release.txt
       - name: Publish firmware
         if: env.FIRMWARE != ''
         uses: softprops/action-gh-release@v2.6.1

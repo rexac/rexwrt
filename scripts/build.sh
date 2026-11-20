@@ -110,6 +110,9 @@ configure_source() {
   seed_config > "$OPENWRTROOT/.config"
   mkdir -p "$OPENWRTROOT/files"
   cp -R "$REXWRT_ROOT/overlay/." "$OPENWRTROOT/files/"
+  if [[ -d "$DEVICE_DIR/overlay" ]]; then
+    cp -R "$DEVICE_DIR/overlay/." "$OPENWRTROOT/files/"
+  fi
   # Device support is independent of package customization and always runs first.
   adapt_device
   (

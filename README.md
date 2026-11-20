@@ -1,7 +1,7 @@
 # rexwrt
 
 Customized OpenWrt builds for `nanopi-neo2-black`, `nanopi-r28s`, and `x86-64`.
-Default LAN IP: `10.0.0.1`.
+Default LAN IP: `192.168.5.1` on R28S; `10.0.0.1` on other devices.
 NEO2 Black board patches are generated from Armbian for the detected kernel and U-Boot versions; its CPU info patch is generated from the matching Linux source.
 Go build recipes follow official OpenWrt `packages/master` on both stable and snapshot builds.
 
@@ -45,6 +45,10 @@ Each fresh build resolves current Linux, U-Boot, Armbian and Radxa branches;
 U-Boot prefers official `main`, then official `next` when R28S support is missing.
 Wireless integration follows Armbian's AIC8800D80 SDIO/UART setup.
 Resolved revisions are embedded in the firmware and copied beside release images.
+R28S includes its own network, wireless, firewall, and DHCP defaults.
+Connect over Wi-Fi (default key: `abcd1234`) to reach `192.168.5.1`;
+both Ethernet ports belong to the `doorlink` bridge. Flash without keeping
+settings to use these defaults on an existing installation.
 
 This adaptation is experimental; full firmware and hardware validation, including
 Wi-Fi, Bluetooth and eMMC boot, must be checked separately. Start with microSD.

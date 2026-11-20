@@ -1,0 +1,35 @@
+
+config interface 'loopback'
+	option device 'lo'
+	option proto 'static'
+	list ipaddr '127.0.0.1/8'
+
+config globals 'globals'
+	option packet_steering '1'
+
+config device
+	option name 'br-lan'
+	option type 'bridge'
+
+config interface 'lan'
+	option device 'br-lan'
+	option proto 'static'
+	list ipaddr '192.168.5.1/24'
+	option ip6assign '60'
+
+config device 'br_doorlink'
+	option type 'bridge'
+	option name 'br-doorlink'
+	list ports 'eth0'
+	list ports 'eth1'
+
+config interface 'doorlink'
+	option proto 'static'
+	option device 'br-doorlink'
+	option ipaddr '172.16.0.201'
+	option netmask '255.255.0.0'
+	option ip6assign '0'
+
+config device
+	option type 'bridge'
+	option name 'docker0'

@@ -11,7 +11,6 @@ while IFS= read -r -d '' file; do bash -n "$file"; done < <(
 )
 bash -n "$root/rexwrt"
 sh -n "$root/overlay/etc/uci-defaults/99-init-settings"
-sh -n "$root/overlay/etc/ppp/ip-down.d/check_wan6_down"
 pass 'active shell scripts parse'
 
 expected=$'nanopi-neo2-black\nnanopi-r28s\nx86-64'

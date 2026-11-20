@@ -22,6 +22,8 @@ EOF
 rm -rf /tmp/luci-modulecache
 rm -rf /tmp/luci-indexcache
 
+# Keep imported router settings intact on first boot.
+if [ ! -f /etc/rexwrt/preserve-network ]; then
 # Set default network preferences
 uci batch <<EOF
 delete network.lan.ipaddr
@@ -46,6 +48,7 @@ set dhcp.lan.max_valid_lifetime='5400'
 commit dhcp
 EOF
 /etc/init.d/odhcpd reload
+fi
 
 # Disable logging in dnsmasq
 sed -i "/log-facility/d" "/etc/dnsmasq.conf"
