@@ -44,7 +44,7 @@ Stable and snapshot use generated patches for the selected OpenWrt kernel.
 Each fresh build resolves current Linux, U-Boot, Armbian and Radxa branches;
 U-Boot prefers official `main`, then official `next` when R28S support is missing.
 Wireless integration follows Armbian's AIC8800D80 SDIO/UART setup.
-Resolved revisions are embedded in the firmware and copied beside release images.
+Resolved R28S revisions are copied beside release images.
 On first boot, `90-r28s-network` applies R28S network, wireless, and firewall
 settings while keeping OpenWrt's DHCP and DNS defaults.
 Connect to `DOORLINK` (default key: `abcd1234`) to reach `192.168.5.1`;

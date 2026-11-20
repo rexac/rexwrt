@@ -43,8 +43,8 @@ adapted once; start from a fresh checkout to resolve newer branch heads.
 ## Reproduction and checks
 
 Source revisions, the exact kernel release, input hashes and a replay bundle are
-saved under `OPENWRT/.rexwrt/r28s/`. Revisions are also installed under
-`/etc/rexwrt/` in the firmware and copied beside collected release images.
+saved under `OPENWRT/.rexwrt/r28s/`. Revisions are copied beside collected
+release images.
 To replay discovered inputs, set `REXWRT_R28S_SOURCES` to that checkout's
 `.rexwrt/r28s/upstream` directory. Immutable kernel files are cached under
 `work/upstream-cache/`; override this with `REXWRT_UPSTREAM_CACHE`.

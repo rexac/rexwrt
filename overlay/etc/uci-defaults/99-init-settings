@@ -67,4 +67,10 @@ fi
 # Try to execute init.sh (if exists)
 [ -f "/boot/init.sh" ] && /bin/sh /boot/init.sh
 
+# Remove the first-boot marker and its directory if no other files are present.
+if [ -f /etc/rexwrt/preserve-network ]; then
+  rm -f /etc/rexwrt/preserve-network || exit 1
+  rmdir /etc/rexwrt 2>/dev/null || :
+fi
+
 exit 0

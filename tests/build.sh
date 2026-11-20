@@ -116,7 +116,7 @@ MOCK
   [[ $(head -1 "$GO_FEEDS_LOG") == 'update -i packages' ]] || fail 'feed index not refreshed first'
   jq -e '.repository == "https://github.com/openwrt/packages" and .branch == "master" and .retained_feed_compilers == ["golang1.26"]' \
     "$tree/.rexwrt/golang-source.json" >/dev/null || fail 'source metadata incorrect'
-  cmp "$tree/.rexwrt/golang-source.json" "$tree/files/etc/rexwrt/golang-source.json"
+  [[ ! -e "$tree/files/etc/rexwrt/golang-source.json" ]] || fail 'Go build metadata copied into firmware'
 
   rm "$incoming/golang-package.mk"
   manifest "$tree" > "$work/before"

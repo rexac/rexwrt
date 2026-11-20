@@ -57,9 +57,8 @@ update_golang() (
     }
   done
   rm -f "$OPENWRTROOT/tmp/.packageinfo" "$OPENWRTROOT/tmp/.packagedeps"
-  mkdir -p "$OPENWRTROOT/.rexwrt" "$OPENWRTROOT/files/etc/rexwrt"
+  mkdir -p "$OPENWRTROOT/.rexwrt"
   cp "$work/source.json" "$OPENWRTROOT/.rexwrt/golang-source.json"
-  cp "$work/source.json" "$OPENWRTROOT/files/etc/rexwrt/golang-source.json"
   printf 'Updated Go from official packages/master at %s; refreshed host package links.\n' "$revision"
 )
 

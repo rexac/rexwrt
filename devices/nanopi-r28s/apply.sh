@@ -119,10 +119,6 @@ cp -R "$sources/boot" "$sources/linux" "$state/upstream/"
 cp "$sources/sources.json" "$sources/sources.tsv" "$sources/hci_aic.c" "$sources/vendor-board.dts" "$state/upstream/"
 if command -v sha256sum >/dev/null 2>&1; then digest=(sha256sum); else digest=(shasum -a 256); fi
 (cd "$state/upstream" && find . -type f -exec "${digest[@]}" {} + | LC_ALL=C sort) > "$state/inputs.sha256"
-mkdir -p "$after/files/etc/rexwrt"
-cp "$state/sources.tsv" "$after/files/etc/rexwrt/r28s-sources.tsv"
-cp "$state/sources.json" "$after/files/etc/rexwrt/r28s-sources.json"
-cp "$state/kernel-release" "$after/files/etc/rexwrt/r28s-kernel-release"
 status=0
 (cd "$work" && git diff --binary --no-index --no-renames --src-prefix= --dst-prefix= before after) > "$work/adaptation.patch" || status=$?
 [[ "$status" == 1 ]] || upstream_die 'Cannot generate complete R28S adaptation'
