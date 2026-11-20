@@ -29,6 +29,26 @@ clone_and_extract https://github.com/immortalwrt/luci applications/luci-app-cpuf
 clone_and_extract https://github.com/immortalwrt/immortalwrt package/emortal/cpufreq
 if [[ "$DEVICE" == nanopi-neo2-black ]]; then
   sed -i '/allwinner,sun50i-h6")/i\\t\t"allwinner,sun50i-h5")\n\t\t\tuci_write_config 0 schedutil "$CPU_MIN_FREQ" "$CPU_MAX_FREQ"\n\t\t\t;;' cpufreq/files/cpufreq.uci
+elif [[ "$DEVICE" == nanopi-r28s ]]; then
+  cpufreq_defaults=cpufreq/files/cpufreq.uci
+  # Seed the shared RK3528 policy with the kernel's limits and governor.
+  if ! grep -Fq '"rockchip,rk3528"' "$cpufreq_defaults"; then
+    if ! awk '
+      /^[[:space:]]*"rockchip,rk3328"\)/ {
+        print "\t\t\"rockchip,rk3528\")"
+        print "\t\t\tgovernor=\"$(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor 2>/dev/null)\""
+        print "\t\t\t[ -z \"$governor\" ] || uci_write_config 0 \"$governor\" \"$CPU_MIN_FREQ\" \"$CPU_MAX_FREQ\""
+        print "\t\t\t;;"
+        found = 1
+      }
+      { print }
+      END { if (!found) exit 1 }
+    ' "$cpufreq_defaults" > "$work/cpufreq.uci"; then
+      printf 'Cannot locate the Rockchip case in %s\n' "$cpufreq_defaults" >&2
+      exit 1
+    fi
+    cat "$work/cpufreq.uci" > "$cpufreq_defaults"
+  fi
 fi
 mkdir -p parted
 curl -fLSs --retry 3 https://raw.githubusercontent.com/lisaac/luci-app-diskman/master/Parted.Makefile -o parted/Makefile
