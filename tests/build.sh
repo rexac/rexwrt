@@ -191,3 +191,28 @@ printf 'PASS: workflow cleanup respects age, per-workflow history, dry runs and 
 test_host_tools
 test_golang
 test_workflow_cleanup
+
+# Generated choices follow source data and leave unrelated workflow steps intact.
+(
+  work=$(mktemp -d)
+  trap 'rm -rf "$work"' EXIT
+  mkdir -p "$work/bin"
+  cat > "$work/bin/git" <<'MOCK'
+#!/bin/sh
+[ "$1" = ls-remote ] || exit 1
+printf '%s\n' 'sha refs/tags/v9.9.9' 'sha refs/tags/v10.0.0' 'sha refs/tags/v10.0.0-rc1' 'sha refs/tags/v8.0.0'
+MOCK
+  chmod +x "$work/bin/git"
+  cp "$project/.github/workflows/build.yml" "$work/build.yml"
+  PATH="$work/bin:$PATH" bash "$project/ci/sync-build-inputs.sh" "$work/build.yml"
+  grep -q '^          - v10.0.0$' "$work/build.yml" || fail 'release choices not generated'
+  if grep -q 'v10.0.0-rc1' "$work/build.yml"; then fail 'prerelease included in stable choices'; fi
+  [[ $(awk '/          - v/ {print $2}' "$work/build.yml") == $'v10.0.0\nv9.9.9\nv8.0.0' ]] || fail 'release choices not sorted numerically'
+  cp "$work/build.yml" "$work/once.yml"
+  PATH="$work/bin:$PATH" bash "$project/ci/sync-build-inputs.sh" "$work/build.yml"
+  cmp "$work/once.yml" "$work/build.yml" || fail 'choice generation is not idempotent'
+  sed '/# BEGIN GENERATED BUILD INPUTS/,/# END GENERATED BUILD INPUTS/d' "$project/.github/workflows/build.yml" > "$work/original"
+  sed '/# BEGIN GENERATED BUILD INPUTS/,/# END GENERATED BUILD INPUTS/d' "$work/build.yml" > "$work/generated"
+  cmp "$work/original" "$work/generated" || fail 'choice generation changed build steps'
+  printf 'PASS: workflow choices follow official stable tags without changing build steps\n'
+)

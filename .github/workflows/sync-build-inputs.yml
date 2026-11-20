@@ -1,0 +1,46 @@
+name: Sync build choices
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 2 * * *'
+  push:
+    paths:
+      - devices/**/config.seed
+      - ci/sync-build-inputs.sh
+      - .github/workflows/sync-build-inputs.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-build-inputs
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository_owner == 'rexac'
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check workflow update token
+        env:
+          SYNC_TOKEN: ${{ secrets.SEC_TOKEN }}
+        run: |
+          if [[ -z "$SYNC_TOKEN" ]]; then
+            echo 'SEC_TOKEN requires repository contents and workflow write access.' >&2
+            exit 1
+          fi
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          token: ${{ secrets.SEC_TOKEN }}
+      - name: Generate choices
+        run: bash ci/sync-build-inputs.sh
+      - name: Update workflow when choices change
+        run: |
+          if git diff --quiet -- .github/workflows/build.yml; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/build.yml
+          git commit -m 'ci: synchronize build input choices'
+          git push

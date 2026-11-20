@@ -26,6 +26,10 @@ Run `./rexwrt help` for commands and options, or `./rexwrt check` for offline ch
 ## GitHub Actions
 
 Run **Build** with a device name and OpenWrt branch/tag.
+Device and release dropdowns are generated from `./rexwrt devices` and the five
+latest official stable tags. **Sync build choices** updates them daily, on device
+changes, or manually, using the existing `SEC_TOKEN` with contents and workflow
+write access. Select `custom` to enter another OpenWrt branch or tag.
 Use `mode: preflight` to compile only the kernel and device packages with verbose logs.
 Full builds run this check first; a compiler cache (up to 1 GB per entry) is saved even after failures.
 **Repo Dispatcher** triggers both snapshot and the latest stable release for each device;

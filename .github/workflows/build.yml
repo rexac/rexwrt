@@ -4,14 +4,34 @@ on:
   repository_dispatch:
   workflow_dispatch:
     inputs:
+      # BEGIN GENERATED BUILD INPUTS
       device:
-        description: Device name (see ./rexwrt devices)
+        description: Device
+        type: choice
+        options:
+          - nanopi-neo2-black
+          - nanopi-r28s
+          - x86-64
         default: nanopi-neo2-black
         required: true
       branch:
         description: OpenWrt branch or stable tag
+        type: choice
+        options:
+          - main
+          - v25.12.6
+          - v25.12.5
+          - v25.12.4
+          - v25.12.3
+          - v25.12.2
+          - custom
         default: main
         required: true
+      # END GENERATED BUILD INPUTS
+      custom_branch:
+        description: OpenWrt branch or tag when custom is selected
+        type: string
+        required: false
       mode:
         description: Full firmware or kernel and device packages only
         type: choice
@@ -25,12 +45,12 @@ permissions:
 
 jobs:
   build:
-    name: ${{ github.event.client_payload.device || inputs.device }} / ${{ github.event.client_payload.branch || inputs.branch }}
+    name: ${{ github.event.client_payload.device || inputs.device }} / ${{ github.event.client_payload.branch || (inputs.branch == 'custom' && inputs.custom_branch) || inputs.branch }}
     runs-on: ubuntu-22.04
     if: github.repository_owner == 'rexac'
     env:
       DEVICE: ${{ github.event.client_payload.device || inputs.device }}
-      BRANCH: ${{ github.event.client_payload.branch || inputs.branch }}
+      BRANCH: ${{ github.event.client_payload.branch || (inputs.branch == 'custom' && inputs.custom_branch) || inputs.branch }}
       BUILD_MODE: ${{ github.event.client_payload.mode || inputs.mode || 'full' }}
       OPENWRTROOT: ${{ github.workspace }}/work/openwrt
       CCACHE_MAXSIZE: 1G
@@ -41,6 +61,7 @@ jobs:
       - name: Validate build request and project
         run: |
           case "$BUILD_MODE" in full|preflight) ;; *) echo 'Invalid build mode' >&2; exit 1 ;; esac
+          if [[ "$BRANCH" == custom ]]; then echo 'Enter an OpenWrt branch or tag for custom selection' >&2; exit 1; fi
           ./rexwrt plan
           ./rexwrt check
       - name: Install build dependencies
