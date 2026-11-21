@@ -53,8 +53,6 @@ jobs:
       BRANCH: ${{ github.event.client_payload.branch || (inputs.branch == 'custom' && inputs.custom_branch) || inputs.branch }}
       BUILD_MODE: ${{ github.event.client_payload.mode || inputs.mode || 'full' }}
       OPENWRTROOT: ${{ github.workspace }}/work/openwrt
-      CCACHE_MAXSIZE: 1G
-      CCACHE_COMPILERCHECK: content
       TZ: Asia/Shanghai
     steps:
       - uses: actions/checkout@v6
@@ -88,15 +86,6 @@ jobs:
         run: ./rexwrt feeds
       - name: Configure firmware
         run: ./rexwrt configure
-      - name: Restore compiler cache
-        id: ccache_restore
-        continue-on-error: true
-        uses: actions/cache/restore@v5
-        with:
-          path: ${{ env.OPENWRTROOT }}/.ccache
-          key: ccache-v1-${{ runner.os }}-${{ env.DEVICE }}-${{ env.BRANCH }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: |
-            ccache-v1-${{ runner.os }}-${{ env.DEVICE }}-${{ env.BRANCH }}-
       - name: Compile kernel and device packages first
         run: ./rexwrt preflight
       - name: Download sources
@@ -123,14 +112,6 @@ jobs:
         env:
           V: s
         run: ./rexwrt images --jobs 1
-      # Preserve useful compiler results even when a later compilation fails.
-      - name: Save compiler cache
-        if: ${{ !cancelled() && steps.ccache_restore.outcome == 'success' }}
-        continue-on-error: true
-        uses: actions/cache/save@v5
-        with:
-          path: ${{ env.OPENWRTROOT }}/.ccache
-          key: ${{ steps.ccache_restore.outputs.cache-primary-key }}
       - name: Prepare release
         if: env.FIRMWARE != ''
         id: release

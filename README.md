@@ -31,7 +31,7 @@ latest official stable tags. **Sync build choices** updates them daily, on devic
 changes, or manually, using the existing `SEC_TOKEN` with contents and workflow
 write access. Select `custom` to enter another OpenWrt branch or tag.
 Use `mode: preflight` to compile only the kernel and device packages with verbose logs.
-Full builds run this check first; a compiler cache (up to 1 GB per entry) is saved even after failures.
+Full builds run this check first.
 **Repo Dispatcher** triggers both snapshot and the latest stable release for each device;
 it requires the `SEC_TOKEN` repository secret with dispatch permission.
 **Cleanup workflow runs** uses GitHub's automatic token; no extra secrets are needed.

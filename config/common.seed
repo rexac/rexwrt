@@ -1,7 +1,7 @@
 # Default
 CONFIG_DEVEL=y
 CONFIG_AUTOREMOVE=y
-CONFIG_CCACHE=y
+# CONFIG_CCACHE is not set
 
 # Language
 CONFIG_LUCI_LANG_zh_Hans=y
