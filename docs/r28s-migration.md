@@ -42,6 +42,19 @@ adapted once; start from a fresh checkout to resolve newer branch heads.
 
 ## Reproduction and checks
 
+Fresh R28S installations prepare `wwan` and `wwan6` for a wireless uplink;
+select the upstream SSID and credentials in LuCI. IPv6 RA, DHCPv6 and NDP
+relay support the verified REX uplink, which supplies an on-link /64 without
+prefix delegation. `extendprefix` is disabled. A hotplug hook selects the
+uplink's global source address for router-originated IPv6 traffic and removes
+the fallback default route when `wwan6` goes down. This relay configuration
+is intended for that upstream topology; routed prefix delegation requires
+LAN RA/DHCPv6 server mode instead. Restored network settings are preserved.
+
+Hardware validation on November 21, 2026 confirmed that DOORLINK, the REX
+station, LAN client IPv6 and Tailscale IPv6 recovered after a reboot. IPv6
+became available after the upstream router advertisement arrived.
+
 Source revisions, the exact kernel release, input hashes and a replay bundle are
 saved under `OPENWRT/.rexwrt/r28s/`. Revisions are copied to the build output
 directory but are not uploaded to GitHub Releases.

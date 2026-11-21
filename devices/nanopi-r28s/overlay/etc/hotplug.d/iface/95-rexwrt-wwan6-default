@@ -1,0 +1,25 @@
+# Keep a fallback default route for unbound IPv6 sockets on the router.
+# The uplink and LAN may share a prefix, so select the uplink source explicitly.
+[ "$INTERFACE" = wwan6 ] || return 0
+(
+	case "$ACTION" in
+		ifup|ifupdate)
+			status="$(ifstatus wwan6 2>/dev/null)" || exit 0
+			dev="$(printf '%s' "$status" | jsonfilter -e '@.l3_device')"
+			for attempt in 1 2 3 4 5; do
+				[ -n "$dev" ] && [ "$(ifstatus wwan6 | jsonfilter -e '@.up')" = true ] || break
+				src="$(ip -6 -o addr show dev "$dev" scope global | awk '
+					!/tentative|dadfailed|deprecated/ { split($4,a,"/"); if (a[1] ~ /^[23]/) { print a[1]; exit } }')"
+				gw="$(ip -6 route show default dev "$dev" proto static | awk '
+					{ for (i=1;i<NF;i++) if ($i=="via") { print $(i+1); exit } }')"
+				if [ -n "$src" ] && [ -n "$gw" ]; then
+					ip -6 route replace default via "$gw" dev "$dev" src "$src" proto 242 metric 4093 && exit 0
+				fi
+				sleep 1
+			done
+			;;
+		ifdown) ;;
+		*) exit 0 ;;
+	esac
+	ip -6 route del default proto 242 metric 4093 2>/dev/null || :
+)

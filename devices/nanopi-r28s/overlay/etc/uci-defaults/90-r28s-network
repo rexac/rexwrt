@@ -45,6 +45,28 @@ config set network.lan.ipaddr=192.168.5.1
 config set network.lan.netmask=255.255.255.0
 config set network.lan.ip6assign=60
 
+# Prepare the wireless uplink without storing an upstream SSID or password.
+config set network.wwan=interface
+config set network.wwan.proto=dhcp
+config set network.wwan6=interface
+config set network.wwan6.device=@wwan
+config set network.wwan6.proto=dhcpv6
+config set network.wwan6.reqaddress=try
+config set network.wwan6.reqprefix=auto
+config set network.wwan6.extendprefix=0
+
+# Relay the upstream /64: the verified REX uplink does not delegate a prefix.
+# A synthetic delegation advertises addresses without providing a return path.
+config set dhcp.wwan6=dhcp
+config set dhcp.wwan6.interface=wwan6
+config set dhcp.wwan6.master=1
+config set dhcp.wwan6.ra=relay
+config set dhcp.wwan6.dhcpv6=relay
+config set dhcp.wwan6.ndp=relay
+config set dhcp.lan.ra=relay
+config set dhcp.lan.dhcpv6=relay
+config set dhcp.lan.ndp=relay
+
 config set network.br_doorlink=device
 config set network.br_doorlink.name=br-doorlink
 config set network.br_doorlink.type=bridge
@@ -89,8 +111,11 @@ config add_list "$wan_zone.network=doorlink"
 config set "$wan_zone.forward=ACCEPT"
 config set 'firewall.@defaults[0].input=ACCEPT'
 config set 'firewall.@defaults[0].forward=ACCEPT'
+lan_zone=$(find_section firewall zone lan)
+config add_list "$lan_zone.network=wwan"
+config add_list "$lan_zone.network=wwan6"
 
 # Commit network last because doorlink marks a completed first boot.
-for package in wireless firewall network; do
+for package in wireless firewall dhcp network; do
   config commit "$package"
 done
