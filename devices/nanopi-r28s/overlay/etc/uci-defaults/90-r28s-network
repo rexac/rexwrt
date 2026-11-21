@@ -32,6 +32,7 @@ lan_bridge=$(find_section network device br-lan) || lan_bridge=network.br_lan
 config set "$lan_bridge=device"
 config set "$lan_bridge.name=br-lan"
 config set "$lan_bridge.type=bridge"
+config set "$lan_bridge.bridge_empty=1"
 delete_if_present "$lan_bridge.ports"
 delete_if_present network.lan.ipaddr
 delete_if_present network.lan.netmask
@@ -56,19 +57,20 @@ config set network.doorlink.proto=static
 config set network.doorlink.ipaddr=172.16.0.201
 config set network.doorlink.netmask=255.255.0.0
 
-# Keep the detected channel and channel width. Seed the radio only if missing.
+# Keep the detected radio identity and use the AP mode verified on R28S.
 [ -f /etc/config/wireless ] || touch /etc/config/wireless
 if ! config -q get wireless.radio0 >/dev/null; then
   config set wireless.radio0=wifi-device
   config set wireless.radio0.type=mac80211
-  config set wireless.radio0.band=2g
-  config set wireless.radio0.channel=auto
 fi
 if ! config -q get wireless.radio0.path >/dev/null &&
    ! config -q get wireless.radio0.phy >/dev/null &&
    ! config -q get wireless.radio0.macaddr >/dev/null; then
-  config set wireless.radio0.path=platform/ffc10000.mmc/mmc_host/mmc3/mmc3:390b/mmc3:390b:1
+  config set wireless.radio0.phy=phy0
 fi
+config set wireless.radio0.band=2g
+config set wireless.radio0.channel=1
+config set wireless.radio0.htmode=HT20
 config set wireless.radio0.country=CN
 config set wireless.radio0.disabled=0
 config set wireless.default_radio0=wifi-iface
