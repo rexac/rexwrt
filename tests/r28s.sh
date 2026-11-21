@@ -81,6 +81,12 @@ for kernel in 6.99 7.11 7.12; do
   tree=$work/openwrt-$kernel
   boarddir=$tree/target/linux/rockchip/armv8/base-files/etc/board.d
   mkdir -p "$tree/include" "$tree/target/linux/rockchip/image" "$tree/target/linux/generic" "$tree/package/kernel/mac80211" "$boarddir"
+  wifi=$tree/package/network/config/wifi-scripts
+  hostapd=$tree/package/network/services/hostapd/files
+  mkdir -p "$wifi/files/usr/share/hostap" "$wifi/files-ucode/lib/netifd/wireless" "$hostapd"
+  printf '\tlet reuse_ifname = find_reusable_wdev(phyidx);\n' > "$wifi/files/usr/share/hostap/common.uc"
+  printf '\t\t\tdata.ap_start_disabled = true;\n' > "$wifi/files-ucode/lib/netifd/wireless/mac80211.sh"
+  printf '\t\t\tif (!req.args.up) {\n\t\t\t\tiface.stop();\n\t\t\t}\n' > "$hostapd/hostapd.uc"
   : > "$tree/include/toplevel.mk"
   printf 'KERNEL_PATCHVER:=%s\n' "$kernel" > "$tree/target/linux/rockchip/Makefile"
   printf 'LINUX_VERSION-%s = .7\n' "$kernel" > "$tree/target/linux/generic/kernel-$kernel"

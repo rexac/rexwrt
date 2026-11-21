@@ -23,7 +23,8 @@ for channel in stable snapshot; do
   mkdir -p "$tree"
   tar -xzf "$archive" -C "$tree" --strip-components=1 \
     "$prefix/target/linux/rockchip" "$prefix/target/linux/generic" "$prefix/include" \
-    "$prefix/package/boot/uboot-rockchip" "$prefix/package/kernel/mac80211/Makefile"
+    "$prefix/package/boot/uboot-rockchip" "$prefix/package/kernel/mac80211/Makefile" \
+    "$prefix/package/network/config/wifi-scripts" "$prefix/package/network/services/hostapd/files"
   manifest "$tree" > "$work/before"
   manifest "$tree/package/boot/uboot-rockchip" > "$work/boot-before"
   "$project/rexwrt" adapt --device nanopi-r28s --source "$tree" --dry-run

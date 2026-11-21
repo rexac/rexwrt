@@ -42,6 +42,41 @@ for file in "$image" "$boarddir/01_leds" "$boarddir/02_network"; do
   cp "$root/$file" "$before/$file"
   cp "$root/$file" "$after/$file"
 done
+
+# Keep the R28S management AP available while LuCI adds or reconnects a station.
+# Match the upstream statements so source drift stops the build before any edits.
+patch_wifi_source() {
+  local file=$1 anchor=$2 replacement=$3
+  [[ -f "$root/$file" ]] || upstream_die "Missing R28S wireless source: $file"
+  mkdir -p "$before/$(dirname "$file")" "$after/$(dirname "$file")"
+  cp -p "$root/$file" "$before/$file"
+  REXWRT_WIFI_ANCHOR="$anchor" REXWRT_WIFI_REPLACEMENT="$replacement" awk '
+    BEGIN { anchor = ENVIRON["REXWRT_WIFI_ANCHOR"]; replacement = ENVIRON["REXWRT_WIFI_REPLACEMENT"] }
+    {
+      match($0, /^[[:blank:]]*/)
+      indent = substr($0, 1, RLENGTH)
+      if (substr($0, RLENGTH + 1) == anchor) {
+        count++
+        n = split(replacement, lines, "\n")
+        for (i = 1; i <= n; i++) print indent lines[i]
+      } else print
+    }
+    END { if (count != 1) exit 1 }
+  ' "$before/$file" > "$work/wifi-source" || upstream_die "Unrecognized R28S wireless source: $file"
+  cp -p "$before/$file" "$after/$file"
+  cat "$work/wifi-source" > "$after/$file"
+}
+
+wifi_scripts=package/network/config/wifi-scripts
+patch_wifi_source "$wifi_scripts/files/usr/share/hostap/common.uc" \
+  'let reuse_ifname = find_reusable_wdev(phyidx);' \
+  'let reuse_ifname = phy == "phy0" && data.mode == "sta" ? null : find_reusable_wdev(phyidx);'
+patch_wifi_source "$wifi_scripts/files-ucode/lib/netifd/wireless/mac80211.sh" \
+  'data.ap_start_disabled = true;' 'data.ap_start_disabled = data.phy != "phy0";'
+patch_wifi_source package/network/services/hostapd/files/hostapd.uc \
+  'if (!req.args.up) {' \
+  $'if (!req.args.up) {\n\tif (phy == "phy0" && config.bss[0].ifname == "phy0-ap0")\n\t\treturn 0;'
+
 bash "$script_dir/generate-packages.sh" "$sources" "$after"
 kernel=$(cat "$work/kernel/kernel-version")
 patch=target/linux/rockchip/patches-$kernel/999-rexwrt-r28s.patch
