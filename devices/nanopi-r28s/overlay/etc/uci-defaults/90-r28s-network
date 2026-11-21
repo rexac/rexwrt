@@ -1,6 +1,14 @@
 #!/bin/sh
 set -e
 
+# Prefer local IPv4 subnet routes to overlapping Tailscale routes. Exclude the
+# default route so remote Tailscale subnets and exit-node routing still work.
+uci set network.rexwrt_local_ipv4=rule
+uci set network.rexwrt_local_ipv4.priority=5260
+uci set network.rexwrt_local_ipv4.lookup=main
+uci set network.rexwrt_local_ipv4.suppress_prefixlength=0
+uci commit network
+
 # Keep settings restored from earlier RexWrt R28S installations.
 if [ "$(uci -q get network.doorlink)" = interface ]; then
   exit 0

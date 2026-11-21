@@ -55,6 +55,11 @@ Hardware validation on November 21, 2026 confirmed that DOORLINK, the REX
 station, LAN client IPv6 and Tailscale IPv6 recovered after a reboot. IPv6
 became available after the upstream router advertisement arrived.
 
+An IPv4 policy rule at priority 5260 prefers non-default routes in the main
+table before Tailscale's subnet routes. This keeps LuCI accessible through
+the wireless uplink when an accepted Tailscale subnet overlaps the local
+network. The rule also applies when restoring earlier R28S network settings.
+
 Source revisions, the exact kernel release, input hashes and a replay bundle are
 saved under `OPENWRT/.rexwrt/r28s/`. Revisions are copied to the build output
 directory but are not uploaded to GitHub Releases.
