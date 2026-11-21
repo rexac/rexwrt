@@ -152,6 +152,7 @@ cp "$sources/sources.json" "$sources/sources.tsv" "$work/kernel/kernel-release" 
 mkdir -p "$state/upstream"
 cp -R "$sources/boot" "$sources/linux" "$state/upstream/"
 cp "$sources/sources.json" "$sources/sources.tsv" "$sources/hci_aic.c" "$sources/vendor-board.dts" "$state/upstream/"
+cp "$sources/vendor-soc.dtsi" "$state/upstream/"
 if command -v sha256sum >/dev/null 2>&1; then digest=(sha256sum); else digest=(shasum -a 256); fi
 (cd "$state/upstream" && find . -type f -exec "${digest[@]}" {} + | LC_ALL=C sort) > "$state/inputs.sha256"
 status=0

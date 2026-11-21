@@ -19,7 +19,7 @@ before=$work/before
 after=$work/after
 mkdir -p "$before" "$after" "$output"
 dts=arch/arm64/boot/dts/rockchip
-files=("$dts/Makefile" "$dts/rk3528-nanopi.dtsi" "$dts/rk3528-nanopi-r28s.dts"
+files=("$dts/Makefile" "$dts/rk3528.dtsi" "$dts/rk3528-nanopi.dtsi" "$dts/rk3528-nanopi-r28s.dts"
   drivers/bluetooth/hci_uart.h drivers/bluetooth/hci_ldisc.c drivers/bluetooth/Makefile drivers/bluetooth/Kconfig)
 for file in "${files[@]}"; do
   if ! upstream_file gregkh/linux "v$release" "$file" "$before/$file"; then
@@ -47,6 +47,64 @@ done
 cp -R "$before/." "$after/"
 cp "$sources/linux/rk3528-nanopi.dtsi" "$after/$dts/"
 cp "$sources/linux/rk3528-nanopi-r28s.dts" "$after/$dts/"
+# Read only CPU OPP nodes; vendor voltage-bin logic is not available in cpufreq-dt.
+# Keep the mainline voltage floor rather than importing an unselected vendor bin.
+read_cpu_opps() {
+  awk '
+    /^[[:space:]]*cpu(0)?_opp_table: .*\{/ { table=1; tables++; next }
+    table && /^\t};/ { table=0 }
+    table && /opp-[0-9]+[[:space:]]*\{/ {
+      if (node) exit 1
+      node=1; hz=volt=low=high=latency=required=0; next
+    }
+    node && /opp-hz = \/bits\/ 64 <[0-9]+>;/ {
+      line=$0; sub(/^.*</,"",line); sub(/>.*/,"",line); hz=line+0
+    }
+    node && /opp-microvolt(-L[0-9]+)? = <[0-9]+ [0-9]+ [0-9]+>;/ {
+      line=$0; sub(/^.*</,"",line); sub(/>.*/,"",line); split(line,v," ")
+      if (v[1]+0 > required) required=v[1]+0
+      if ($0 ~ /opp-microvolt =/) { volt=v[1]; low=v[2]; high=v[3] }
+    }
+    node && /clock-latency-ns = <[0-9]+>;/ {
+      line=$0; sub(/^.*</,"",line); sub(/>.*/,"",line); latency=line+0
+    }
+    node && /status[[:space:]]*=/ { exit 1 }
+    node && /};/ {
+      if (!hz || !volt || !latency || low>volt || high<volt) exit 1
+      printf "%.0f %d %d %d %d %d\n", hz,volt,low,high,latency,required
+      count++; node=0
+    }
+    END { if (tables!=1 || table || node || !count) exit 1 }
+  ' "$1"
+}
+grep -Eq '^[[:space:]]*cpu_opp_table:' "$after/$dts/rk3528.dtsi" || upstream_die 'Unknown target CPU OPP label'
+read_cpu_opps "$after/$dts/rk3528.dtsi" | sort -n > "$work/target-opps" || upstream_die 'Unknown target RK3528 CPU OPP layout'
+read_cpu_opps "$sources/vendor-soc.dtsi" | sort -n > "$work/vendor-opps" || upstream_die 'Unknown vendor RK3528 CPU OPP layout'
+read -r floor voltage minimum maximum latency _ < "$work/target-opps"
+# Honor the vendor's cold-temperature floor even without its compensation driver.
+cold_voltage=$(awk '
+  /^[[:space:]]*cpu(0)?_opp_table:/ { active=1 }
+  active && /rockchip,low-temp-min-volt = <[0-9]+>;/ {
+    sub(/^.*</, ""); sub(/>.*/, ""); print; count++
+  }
+  active && /^\t};/ { active=0 }
+  END { if (count!=1) exit 1 }
+' "$sources/vendor-soc.dtsi") || upstream_die 'Unknown vendor cold-temperature voltage floor'
+if (( cold_voltage > voltage )); then voltage=$cold_voltage; minimum=$cold_voltage; fi
+(( voltage <= maximum )) || upstream_die 'Vendor cold-temperature voltage exceeds the target envelope'
+awk -v floor="$floor" -v voltage="$voltage" -v minimum="$minimum" -v maximum="$maximum" '
+  $1 < floor {
+    if ($6 > voltage || maximum > $4 || minimum < $3) exit 1
+    printf "\topp-%.0f {\n\t\topp-hz = /bits/ 64 <%.0f>;\n", $1,$1
+    printf "\t\topp-microvolt = <%d %d %d>;\n", voltage,minimum,maximum
+    printf "\t\tclock-latency-ns = <%d>;\n\t};\n", $5
+  }
+' "$work/vendor-opps" > "$work/low-opps" || upstream_die 'Vendor low OPP voltage requirements exceed the target voltage envelope'
+if [[ -s "$work/low-opps" ]]; then
+  printf '\n/* Vendor low frequencies with the mainline voltage floor. */\n&cpu_opp_table {\n' >> "$after/$dts/rk3528-nanopi-r28s.dts"
+  cat "$work/low-opps" >> "$after/$dts/rk3528-nanopi-r28s.dts"
+  printf '};\n' >> "$after/$dts/rk3528-nanopi-r28s.dts"
+fi
 if ! grep -q 'rk3528-nanopi-r28s.dtb' "$after/$dts/Makefile"; then
   printf '\ndtb-$(CONFIG_ARCH_ROCKCHIP) += rk3528-nanopi-r28s.dtb\n' >> "$after/$dts/Makefile"
 fi

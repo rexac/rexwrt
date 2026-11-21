@@ -22,6 +22,7 @@ done
 case "$url" in
   */drivers/bluetooth/*) file=drivers/bluetooth/${url##*/} ;;
   */arch/arm64/boot/dts/rockchip/Makefile) file=arch/arm64/boot/dts/rockchip/Makefile ;;
+  */arch/arm64/boot/dts/rockchip/rk3528.dtsi) file=arch/arm64/boot/dts/rockchip/rk3528.dtsi ;;
   *) printf '404'; exit 0 ;;
 esac
 if [[ ${R28S_MISSING_KERNEL:-0} == 1 ]]; then printf '404'; else cp "$R28S_KERNEL/$file" "$output"; printf '200'; fi
@@ -55,6 +56,34 @@ cat > "$sources/linux/rk3528-nanopi-r28s.dts" <<'DTS'
 };
 DTS
 : > "$sources/linux/rk3528-nanopi.dtsi"
+cat > "$work/kernel/arch/arm64/boot/dts/rockchip/rk3528.dtsi" <<'DTS'
+/ {
+	cpu_opp_table: opp-table-cpu {
+		compatible = "operating-points-v2";
+		opp-shared;
+		opp-1200000000 {
+			opp-hz = /bits/ 64 <1200000000>;
+			opp-microvolt = <875000 875000 1100000>;
+			clock-latency-ns = <40000>;
+		};
+	};
+};
+DTS
+cat > "$sources/vendor-soc.dtsi" <<'DTS'
+/ {
+	cpu0_opp_table: cpu0-opp-table {
+		compatible = "operating-points-v2";
+		opp-shared;
+		rockchip,low-temp-min-volt = <900000>;
+		opp-408000000 {
+			opp-hz = /bits/ 64 <408000000>;
+			opp-microvolt = <825000 825000 1100000>;
+			opp-microvolt-L0 = <875000 875000 1100000>;
+			clock-latency-ns = <40000>;
+		};
+	};
+};
+DTS
 cat > "$sources/vendor-board.dts" <<'DTS'
 &uart2 {
  bluetooth {
@@ -120,6 +149,14 @@ NETWORK
   # Do not retain the deliberately missing immutable files between fixtures.
   rm -rf "$work/cache"
   if [[ "$kernel" == 6.99 ]]; then
+    cp "$sources/vendor-soc.dtsi" "$work/vendor-soc.dtsi"
+    sed 's/875000/1125000/g' "$work/vendor-soc.dtsi" > "$sources/vendor-soc.dtsi"
+    if "$project/rexwrt" adapt --device nanopi-r28s --source "$tree" > "$work/error" 2>&1; then fail 'unsafe low OPP voltage accepted'; fi
+    grep -q 'voltage requirements exceed' "$work/error" || fail 'unsafe OPP diagnostic'
+    manifest "$tree" > "$work/after"
+    cmp "$work/before" "$work/after" || fail 'unsafe OPP modified checkout'
+    mv "$work/vendor-soc.dtsi" "$sources/vendor-soc.dtsi"
+    rm -rf "$work/cache"
     cp "$work/kernel/drivers/bluetooth/hci_uart.h" "$work/hci_uart.h"
     sed 's/struct hci_dev/struct unknown_context/' "$work/hci_uart.h" > "$work/kernel/drivers/bluetooth/hci_uart.h"
     if "$project/rexwrt" adapt --device nanopi-r28s --source "$tree" > "$work/error" 2>&1; then fail 'unknown H4 API accepted'; fi
@@ -152,6 +189,8 @@ MAKE
     cmp "$sources/boot/files/rk3528_ddr_fixture.bin" "$tree/package/boot/uboot-rexwrt-r28s/files/rk3528_ddr_fixture.bin" || fail 'binary firmware damaged'
   fi
   grep -q 'request_module("aic8800_fdrv")' "$tree/target/linux/rockchip/patches-$kernel/999-rexwrt-r28s.patch" || fail 'Bluetooth module linkage'
+  grep -q 'opp-408000000' "$tree/target/linux/rockchip/patches-$kernel/999-rexwrt-r28s.patch" || fail 'missing vendor low OPP'
+  grep -q 'opp-microvolt = <900000 900000 1100000>' "$tree/target/linux/rockchip/patches-$kernel/999-rexwrt-r28s.patch" || fail 'missing cold-safe conservative OPP voltage'
   grep -F "h4_recv_buf($h4_arg, skb" "$tree/target/linux/rockchip/patches-$kernel/999-rexwrt-r28s.patch" >/dev/null || fail 'Bluetooth H4 receive API'
   # Snapshot uses a Make expression for PKG_VERSION; metadata parsing must still
   # expose the Wi-Fi and Bluetooth packages rather than silently dropping them.

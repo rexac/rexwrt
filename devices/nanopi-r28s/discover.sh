@@ -21,6 +21,7 @@ vendorbranch=$(awk '/^[[:space:]]*vendor\)/ {active=1; next} active && /KERNELBR
 [[ "$vendorbranch" =~ ^[a-zA-Z0-9._/-]+$ ]] || upstream_die 'Cannot discover Armbian vendor kernel branch'
 vendorsha=$(upstream_head armbian/linux-rockchip "$vendorbranch" "$work/vendor-head.json")
 upstream_required_file armbian/linux-rockchip "$vendorsha" drivers/bluetooth/hci_aic.c "$work/hci_aic.c"
+upstream_required_file armbian/linux-rockchip "$vendorsha" arch/arm64/boot/dts/rockchip/rk3528.dtsi "$work/vendor-soc.dtsi"
 fdt=$(upstream_setting "$work/armbian/$board" BOOT_FDT_FILE)
 upstream_required_file armbian/linux-rockchip "$vendorsha" "arch/arm64/boot/dts/${fdt%.dtb}.dts" "$work/vendor-board.dts"
 for name in rk3528-nanopi-r28s.dts rk3528-nanopi.dtsi; do

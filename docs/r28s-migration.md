@@ -42,6 +42,19 @@ adapted once; start from a fresh checkout to resolve newer branch heads.
 
 ## Reproduction and checks
 
+CPU low-frequency OPPs are discovered from `rk3528.dtsi` at the same Armbian
+vendor-kernel revision used for Bluetooth. Only frequencies below the reconstructed
+target kernel's lowest OPP are added, in the R28S board DTS. Existing SoC OPPs
+remain unchanged. Added OPPs use the target's lowest-OPP voltage envelope rather
+than the vendor's base voltage, because mainline `cpufreq-dt` does not select the
+vendor voltage bins. The voltage is also clamped to the vendor cold-temperature
+minimum. Generation rejects unknown layouts and vendor bins requiring more voltage
+than this envelope permits. The current tables add 408, 600, 816
+and 1008 MHz at 900 mV; frequency lists are not hardcoded. This is frequency
+scaling support, not a port of vendor PVTM or temperature compensation. Regulator,
+clock transitions and stability still require validation on newly built firmware;
+the adapter does not alter a running router.
+
 Fresh R28S installations prepare `wwan` and `wwan6` for a wireless uplink;
 select the upstream SSID and credentials in LuCI. IPv6 RA, DHCPv6 and NDP
 relay support the verified REX uplink, which supplies an on-link /64 without
