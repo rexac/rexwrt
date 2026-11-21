@@ -144,7 +144,8 @@ jobs:
           name: ${{ steps.release.outputs.tag }} Automatic Release
           tag_name: ${{ steps.release.outputs.tag }}
           body_path: release.txt
-          files: ${{ env.FIRMWARE }}/*
+          files: "${{ env.FIRMWARE }}/*.img.gz"
+          fail_on_unmatched_files: true
       - name: Retain recent releases
         if: env.FIRMWARE != ''
         uses: dev-drprasad/delete-older-releases@v0.3.3
