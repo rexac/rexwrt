@@ -15,7 +15,9 @@ images=("$OPENWRTROOT"/bin/targets/"$TARGET_BOARD"/"$TARGET_SUBTARGET"/*.img.gz)
 for image in "${images[@]}"; do
   name=$(basename "$image")
   name=${name/openwrt-/openwrt-$version-}
-  name=${name/-$TARGET_BOARD-$TARGET_SUBTARGET/}
+  if [[ "$DEVICE" != x86-64 ]]; then
+    name=${name/-$TARGET_BOARD-$TARGET_SUBTARGET/}
+  fi
   for suffix in -combined -generic -sysupgrade; do name=${name/$suffix/}; done
   cp "$image" "$release/$name"
   digest=$(sha256sum "$release/$name")

@@ -77,6 +77,28 @@ DEVICE=nanopi-r28s BRANCH=v25.12.6 OPENWRTROOT="$source_tree" RELEASE_DIR="$work
 PATH="$work/bin:$PATH" sh -c 'cd "$1" && sha256sum --check v25.12.6-nanopi-r28s-sha256sum.txt' sh "$work/release"
 pass 'target-specific artifacts and valid checksums'
 
+# Keep x86 architecture and image variants identifiable in both release channels.
+mkdir -p "$source_tree/bin/targets/x86/64"
+for filesystem in ext4 squashfs; do
+  for variant in combined combined-efi rootfs; do
+    printf 'x86 %s %s\n' "$filesystem" "$variant" > "$source_tree/bin/targets/x86/64/openwrt-x86-64-generic-$filesystem-$variant.img.gz"
+  done
+done
+for branch in main v25.12.6; do
+  version=$branch
+  [[ "$branch" != main ]] || version=snapshot
+  output=$work/x86-$version
+  DEVICE=x86-64 BRANCH="$branch" OPENWRTROOT="$source_tree" RELEASE_DIR="$output" \
+    PATH="$work/bin:$PATH" bash "$root/scripts/collect-images.sh" > "$work/images"
+  for filesystem in ext4 squashfs; do
+    for suffix in '' -efi -rootfs; do
+      [[ -f "$output/openwrt-$version-x86-64-$filesystem$suffix.img.gz" ]] || fail 'x86 artifact naming'
+    done
+  done
+  PATH="$work/bin:$PATH" sh -c 'cd "$1" && sha256sum --check "$2"' sh "$output" "$version-x86-64-sha256sum.txt" > "$work/checksums"
+done
+pass 'stable and snapshot x86 artifacts retain architecture and distinct image variants'
+
 # Stop on the failing build stage; do not create an index or install images.
 cat > "$work/bin/uname" <<'MOCK'
 #!/bin/sh
